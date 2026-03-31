@@ -1,0 +1,146 @@
+// ─── 小说元数据 ──────────────────────────────────────────────────────────────
+
+export interface NovelMeta {
+  id: string;
+  title: string;
+  genre: string;
+  setting: string;           // 都市背景（城市名称）
+  protagonist: string;       // 主角名
+  cheatType: string;         // 金手指类型
+  targetChapters: number;
+  wordsPerChapter: number;
+  status: NovelStatus;
+  currentChapter: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type NovelStatus =
+  | 'init'
+  | 'world-built'
+  | 'power-system-designed'
+  | 'characters-created'
+  | 'outlined'
+  | 'writing'
+  | 'completed';
+
+// ─── 人物 ────────────────────────────────────────────────────────────────────
+
+export type CharacterRole =
+  | 'protagonist'
+  | 'female_lead'
+  | 'antagonist'
+  | 'villain_boss'
+  | 'supporting'
+  | 'cannon_fodder';   // 路人/炮灰反派
+
+export interface Character {
+  name: string;
+  role: CharacterRole;
+  age?: number;
+  appearance: string;
+  personality: string;
+  background: string;
+  abilities?: string;
+  currentRealm?: string;      // 当前境界
+  relationshipToProtagonist?: string;
+  faceSlapped?: boolean;      // 是否已被打脸
+  firstAppearance?: number;   // 首次出现章节
+}
+
+// ─── 大纲 ────────────────────────────────────────────────────────────────────
+
+export interface PlotArc {
+  name: string;
+  chapterRange: [number, number];
+  summary: string;
+  majorEvents: string[];
+  faceSlapTargets: string[];   // 本弧需要打脸的对象
+  realmBreakthrough?: string; // 本弧主角突破的境界
+}
+
+export interface Outline {
+  premise: string;
+  goldenFinger: string;        // 金手指详细说明
+  arcs: PlotArc[];
+  overallConflict: string;     // 主线矛盾
+  endingVision: string;        // 结局愿景
+}
+
+// ─── 章节计划 ────────────────────────────────────────────────────────────────
+
+export interface ChapterPlan {
+  chapterNumber: number;
+  title: string;
+  pov: string;                 // 视角人物（通常主角）
+  location: string;            // 场景地点
+  summary: string;
+  beats: string[];             // 情节节拍（分步骤）
+  faceSlapMoment?: string;     // 打脸情节（如有）
+  breakthroughMoment?: string; // 突破情节（如有）
+  romanceMoment?: string;      // 感情线推进（如有）
+  endingHook: string;          // 结尾悬念钩子
+  wordTarget: number;
+}
+
+// ─── 故事记忆 ────────────────────────────────────────────────────────────────
+
+export interface PendingFaceSlap {
+  target: string;
+  offense: string;             // 做了什么事/说了什么话
+  offenseChapter: number;
+}
+
+export interface PlotThread {
+  thread: string;
+  status: 'active' | 'resolved' | 'pending';
+  hintChapter?: number;
+}
+
+export interface StoryMemory {
+  lastUpdatedChapter: number;
+  protagonistState: {
+    realm: string;             // 当前境界
+    abilities: string[];       // 已掌握能力
+    currentGoal: string;       // 当前目标
+    location: string;          // 当前位置
+    relationships: Record<string, string>; // 与各人物关系状态
+  };
+  activeConflicts: string[];
+  pendingFaceSlaps: PendingFaceSlap[];
+  resolvedFaceSlaps: Array<{ target: string; resolvedChapter: number }>;
+  plotThreads: PlotThread[];
+  romanceProgress: Array<{ character: string; stage: string }>;
+  recentEvents: string[];      // 最近3-5章的关键事件摘要
+  foreshadowing: string[];     // 已埋下的伏笔
+}
+
+// ─── Skill 系统 ───────────────────────────────────────────────────────────────
+
+export interface Skill {
+  name: string;
+  description: string;
+  content: string;    // SKILL.md body（触发后加载）
+  filePath: string;
+}
+
+// ─── API 请求/响应 ────────────────────────────────────────────────────────────
+
+export interface CreateNovelRequest {
+  title: string;
+  setting?: string;         // 城市背景，如"上海"
+  protagonist?: string;     // 主角名
+  cheatType?: string;       // 金手指类型，如"系统"/"传承"/"神器"
+  targetChapters?: number;
+  themes?: string[];        // 主题标签，如["学霸","商战","修炼"]
+}
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export interface GenerateRequest {
+  prompt?: string;          // 额外的提示/要求
+}
