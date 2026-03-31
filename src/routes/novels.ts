@@ -525,7 +525,7 @@ async function updateMemoryAfterChapter(
 ${JSON.stringify(oldMemory, null, 2)}
 
 第${chapterN}章内容：
-${chapterText.slice(0, 3000)}
+${chapterText}
 
 请更新并输出完整的 StoryMemory JSON（包含所有字段）。`;
 
@@ -571,7 +571,7 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
         const text = await callClaude(
           buildSystemPrompt('chapter-planner', buildGeneralContext(id)),
           `请规划第${batchStart}到第${batchEnd}章，输出 JSON 数组。${arc ? '当前弧：' + JSON.stringify(arc) : ''}${memory ? ' 主角境界：' + memory.protagonistState.realm : ''}`,
-          4000,
+          8000,
         );
         const plans = extractJSON<ChapterPlan[]>(text);
         if (plans) for (const p of plans) saveChapterPlan(id, p.chapterNumber, p);
@@ -658,7 +658,7 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
         const text = await callClaude(
           buildSystemPrompt('plot-architect', buildGeneralContext(id)),
           `请为《${meta.title}》生成故事大纲，目标${meta.targetChapters}章，输出 JSON`,
-          5000,
+          8000,
         );
         const outline = extractJSON<Outline>(text);
         if (outline) { saveOutline(id, outline); meta.status = 'outlined'; saveMeta(meta); }

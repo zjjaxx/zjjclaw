@@ -201,8 +201,8 @@ export function getPrevChaptersSummary(id: string, currentN: number, take = 3): 
   for (let i = start; i < currentN; i++) {
     const content = getChapter(id, i);
     if (content) {
-      // 取前 600 字作为摘要
-      summaries.push(`【第${i}章摘要】\n${content.slice(0, 600).trim()}…`);
+      // 取前3章作为摘要
+      summaries.push(`【第${i}章摘要】\n${content.trim()}…`);
     }
   }
   return summaries.join('\n\n');
