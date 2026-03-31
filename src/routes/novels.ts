@@ -546,6 +546,64 @@ interface PipelineStep {
   run: () => Promise<void>;
 }
 
+const BATCH_SIZE = 10;
+
+function findCurrentArc(outline: Outline, chapterNum: number) {
+  return outline.arcs.find(
+    (arc) => chapterNum >= arc.chapterRange[0] && chapterNum <= arc.chapterRange[1],
+  );
+}
+
+function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): PipelineStep[] {
+  const total = meta.targetChapters;
+  const steps: PipelineStep[] = [];
+
+  for (let batchStart = 1; batchStart <= total; batchStart += BATCH_SIZE) {
+    const batchEnd = Math.min(batchStart + BATCH_SIZE - 1, total);
+
+    steps.push({
+      name: `规划第${batchStart}-${batchEnd}章`,
+      skip: () => !!getChapterPlan(id, batchStart),
+      run: async () => {
+        const memory = getMemory(id);
+        const outline = getOutline(id);
+        const arc = outline ? findCurrentArc(outline, batchStart) : null;
+        const text = await callClaude(
+          buildSystemPrompt('chapter-planner', buildGeneralContext(id)),
+          `请规划第${batchStart}到第${batchEnd}章，输出 JSON 数组。${arc ? '当前弧：' + JSON.stringify(arc) : ''}${memory ? ' 主角境界：' + memory.protagonistState.realm : ''}`,
+          4000,
+        );
+        const plans = extractJSON<ChapterPlan[]>(text);
+        if (plans) for (const p of plans) saveChapterPlan(id, p.chapterNumber, p);
+      },
+    });
+
+    for (let n = batchStart; n <= batchEnd; n++) {
+      steps.push({
+        name: `写第${n}章`,
+        skip: () => !!getChapter(id, n),
+        run: async () => {
+          const chapterContext = buildChapterContext(id, n);
+          const text = await callClaude(
+            buildSystemPrompt('chapter-writer', chapterContext),
+            `请写《${meta.title}》第${n}章，约${meta.wordsPerChapter}字，结尾留悬念`,
+            6000,
+          );
+          saveChapter(id, n, text);
+          if (n > meta.currentChapter) {
+            meta.currentChapter = n;
+            meta.status = 'writing';
+            saveMeta(meta);
+          }
+          await updateMemoryAfterChapter(id, n, text);
+        },
+      });
+    }
+  }
+
+  return steps;
+}
+
 function buildGenerationPipeline(id: string): PipelineStep[] {
   const meta = getMeta(id)!;
 
@@ -606,36 +664,6 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
         if (outline) { saveOutline(id, outline); meta.status = 'outlined'; saveMeta(meta); }
       },
     },
-    {
-      name: '规划前10章',
-      skip: () => !!getChapterPlan(id, 1),
-      run: async () => {
-        const memory = getMemory(id);
-        const outline = getOutline(id);
-        const text = await callClaude(
-          buildSystemPrompt('chapter-planner', buildGeneralContext(id)),
-          `请规划第1到第10章，输出 JSON 数组。${outline ? '当前弧：' + JSON.stringify(outline.arcs[0]) : ''}${memory ? ' 主角境界：' + memory.protagonistState.realm : ''}`,
-          4000,
-        );
-        const plans = extractJSON<ChapterPlan[]>(text);
-        if (plans) for (const p of plans) saveChapterPlan(id, p.chapterNumber, p);
-      },
-    },
-    ...Array.from({ length: 5 }, (_, i) => ({
-      name: `写第${i + 1}章`,
-      skip: () => !!getChapter(id, i + 1),
-      run: async () => {
-        const n = i + 1;
-        const chapterContext = buildChapterContext(id, n);
-        const text = await callClaude(
-          buildSystemPrompt('chapter-writer', chapterContext),
-          `请写《${meta.title}》第${n}章，约${meta.wordsPerChapter}字，结尾留悬念`,
-          6000,
-        );
-        saveChapter(id, n, text);
-        if (n > meta.currentChapter) { meta.currentChapter = n; meta.status = 'writing'; saveMeta(meta); }
-        await updateMemoryAfterChapter(id, n, text);
-      },
-    })),
+    ...buildChapterSteps(id, meta),
   ];
 }
