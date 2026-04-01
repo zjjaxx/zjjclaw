@@ -9,7 +9,6 @@ import {
   getCharacters,
   getChapter,
   getChapterPlan,
-  getGenerateProgress,
   getMeta,
   getMemory,
   getOutline,
@@ -19,7 +18,6 @@ import {
   saveCharacters,
   saveChapter,
   saveChapterPlan,
-  saveGenerateProgress,
   saveMeta,
   saveMemory,
   saveOutline,
@@ -322,38 +320,14 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
     if (!meta) { res.status(404).json({ success: false, error: '小说不存在' }); return; }
 
     const body = req.body as { restart?: boolean };
-    const existingProgress = getGenerateProgress(meta.id);
 
     if (body.restart) {
       deleteGenerateProgress(meta.id);
     }
 
-    const isResume = !body.restart && existingProgress &&
-      (existingProgress.status === 'running' || existingProgress.status === 'interrupted' || existingProgress.status === 'failed');
-    const completedSteps = new Set(isResume ? existingProgress!.completedSteps : []);
-
     sseHeaders(res);
+    sendSSE(res, 'start', { message: `开始自动生成《${meta.title}》` });
 
-    if (isResume) {
-      sendSSE(res, 'resume', {
-        message: `恢复自动生成《${meta.title}》`,
-        completedSteps: [...completedSteps],
-        failedStep: existingProgress!.failedStep,
-      });
-    } else {
-      sendSSE(res, 'start', { message: `开始自动生成《${meta.title}》` });
-    }
-
-    const progress: PipelineProgress = {
-      status: 'running',
-      completedSteps: [...completedSteps],
-      currentStep: null,
-      failedStep: null,
-      failedError: null,
-      startedAt: isResume ? existingProgress!.startedAt : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    saveGenerateProgress(meta.id, progress);
 
     const steps = buildGenerationPipeline(meta.id);
 
@@ -361,14 +335,10 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
     const RETRY_DELAY_MS = 5000;
 
     for (const step of steps) {
-      if (completedSteps.has(step.name) || step.skip?.()) {
+      if (step.skip?.()) {
         sendSSE(res, 'skip', { step: step.name });
         continue;
       }
-
-      progress.currentStep = step.name;
-      saveGenerateProgress(meta.id, progress);
-
       sendSSE(res, 'step', { step: step.name, message: `正在执行：${step.name}` });
 
       let succeeded = false;
@@ -389,54 +359,23 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
             });
             await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
           } else {
-            progress.status = 'failed';
-            progress.failedStep = step.name;
-            progress.failedError = String(err);
-            saveGenerateProgress(meta.id, progress);
             sendSSE(res, 'step_error', { step: step.name, error: String(err), message: `${step.name} 重试${MAX_RETRIES}次后仍失败` });
           }
         }
       }
 
       if (succeeded) {
-        progress.completedSteps.push(step.name);
-        progress.currentStep = null;
-        saveGenerateProgress(meta.id, progress);
         sendSSE(res, 'step_done', { step: step.name });
       }
     }
 
-    if (progress.status !== 'failed') {
-      progress.status = 'completed';
-      progress.currentStep = null;
-      saveGenerateProgress(meta.id, progress);
-    }
 
     sendSSE(res, 'done', {
-      message: progress.status === 'completed' ? '自动生成完成' : '自动生成未完成（有步骤失败）',
-      status: progress.status,
+      message:'自动生成完成'
     });
     res.end();
   } catch (err) {
     handleError(res, err, 'POST /generate');
-  }
-});
-
-// GET /api/novels/:id/generate/status — 查看流水线进度
-router.get('/:id/generate/status', (req: Request, res: Response) => {
-  try {
-    const meta = getMeta(req.params.id);
-    if (!meta) { res.status(404).json({ success: false, error: '小说不存在' }); return; }
-
-    const progress = getGenerateProgress(meta.id);
-    if (!progress) {
-      res.json({ success: true, data: { status: 'not_started' } });
-      return;
-    }
-
-    res.json({ success: true, data: progress });
-  } catch (err) {
-    handleError(res, err, 'GET /generate/status');
   }
 });
 
@@ -604,6 +543,28 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
   return steps;
 }
 
+/**
+ * 根据目标章节数按比例计算各弧章节范围。
+ * ≤100章 → 2弧，101-200 → 3弧，201-350 → 4弧，351+ → 5弧
+ */
+function computeArcRanges(total: number): Array<[number, number]> {
+  const ratios =
+    total <= 100 ? [0.4, 1.0] :
+    total <= 200 ? [0.2, 0.55, 1.0] :
+    total <= 350 ? [0.15, 0.4, 0.75, 1.0] :
+                   [0.1, 0.3, 0.6, 0.85, 1.0];
+
+  const ranges: Array<[number, number]> = [];
+  let prev = 0;
+  for (const ratio of ratios) {
+    const start = prev + 1;
+    const end = Math.round(total * ratio);
+    ranges.push([start, end]);
+    prev = end;
+  }
+  return ranges;
+}
+
 function buildGenerationPipeline(id: string): PipelineStep[] {
   const meta = getMeta(id)!;
 
@@ -655,10 +616,14 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
       name: '生成大纲',
       skip: () => !!getOutline(id),
       run: async () => {
+        const arcRanges = computeArcRanges(meta.targetChapters);
+        const arcHint = arcRanges
+          .map((r, i) => `第${i + 1}弧：第${r[0]}-${r[1]}章`)
+          .join('；');
         const text = await callClaude(
           buildSystemPrompt('plot-architect', buildGeneralContext(id)),
-          `请为《${meta.title}》生成故事大纲，目标${meta.targetChapters}章，输出 JSON`,
-          8000,
+          `请为《${meta.title}》生成故事大纲，总章节数：${meta.targetChapters}章，弧线章节范围：${arcHint}，输出 JSON`,
+          30000,
         );
         const outline = extractJSON<Outline>(text);
         if (outline) { saveOutline(id, outline); meta.status = 'outlined'; saveMeta(meta); }

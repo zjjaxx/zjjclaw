@@ -153,12 +153,13 @@ init → world-built → power-system-designed → characters-created → outlin
 curl -X POST http://localhost:7879/api/novels \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "都市最强学霸",
+    "title": "异能吞噬",
     "setting": "上海",
     "protagonist": "林逸",
-    "cheatType": "全知全能系统",
-    "targetChapters": 100,
-    "themes": ["学霸", "商战", "修炼"]
+    "cheatType": "吞噬系统",
+    "targetChapters": 300,
+    "wordsPerChapter": 2000,
+    "themes": ["异能", "爱情", "修炼"]
   }'
 ```
 
@@ -168,13 +169,12 @@ curl -X POST http://localhost:7879/api/novels \
 {
   "success": true,
   "data": {
-    "id": "abc123",
-    "title": "都市最强学霸",
+    "title": "异能吞噬",
     "setting": "上海",
     "protagonist": "林逸",
-    "cheatType": "全知全能系统",
-    "targetChapters": 100,
-    "wordsPerChapter": 3000,
+    "cheatType": "吞噬系统",
+    "targetChapters": 300,
+    "wordsPerChapter": 2000,
     "status": "init",
     "currentChapter": 0,
     "createdAt": "2026-03-31T00:00:00.000Z",

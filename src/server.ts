@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import { router as novelsRouter } from './routes/novels.js';
 import { loadSkills } from './services/skill.service.js';
-import { markRunningPipelinesAsInterrupted } from './services/novel.service.js';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 7879;
@@ -21,7 +20,6 @@ app.get('/api/health', (_req, res) => {
 
 // ─── 启动 ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  markRunningPipelinesAsInterrupted();
   const skills = loadSkills();
   console.log(`\n🚀 zjjclaw 服务启动成功`);
   console.log(`   地址: http://localhost:${PORT}`);

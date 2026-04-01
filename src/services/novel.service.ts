@@ -156,7 +156,7 @@ export function saveOutline(id: string, outline: Outline): void {
 // ─── 故事记忆 ─────────────────────────────────────────────────────────────────
 
 export function getMemory(id: string): StoryMemory | null {
-  const file = path.join(novelDir(id), 'memory.md');
+  const file = path.join(novelDir(id), 'memory.json');
   if (!fs.existsSync(file)) return null;
   try {
     return JSON.parse(fs.readFileSync(file, 'utf-8')) as StoryMemory;
@@ -166,7 +166,7 @@ export function getMemory(id: string): StoryMemory | null {
 }
 
 export function saveMemory(id: string, memory: StoryMemory): void {
-  fs.writeFileSync(path.join(novelDir(id), 'memory.md'), JSON.stringify(memory, null, 2));
+  fs.writeFileSync(path.join(novelDir(id), 'memory.json'), JSON.stringify(memory, null, 2));
 }
 
 // ─── 章节 ─────────────────────────────────────────────────────────────────────
@@ -341,6 +341,7 @@ export function buildGeneralContext(id: string): string {
       `### 小说信息`,
       `- 标题：${meta.title}，主角：${meta.protagonist}`,
       `- 金手指：${meta.cheatType}，背景：${meta.setting}`,
+      `- 目标章节数：${meta.targetChapters}章`,
       '',
     );
   }
@@ -369,44 +370,11 @@ export interface PipelineProgress {
   updatedAt: string;
 }
 
-export function getGenerateProgress(id: string): PipelineProgress | null {
-  const file = path.join(novelDir(id), 'pipeline-progress.json');
-  if (!fs.existsSync(file)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf-8')) as PipelineProgress;
-  } catch {
-    return null;
-  }
-}
 
-export function saveGenerateProgress(id: string, progress: PipelineProgress): void {
-  progress.updatedAt = new Date().toISOString();
-  fs.writeFileSync(
-    path.join(novelDir(id), 'pipeline-progress.json'),
-    JSON.stringify(progress, null, 2),
-  );
-}
 
 export function deleteGenerateProgress(id: string): void {
   const file = path.join(novelDir(id), 'pipeline-progress.json');
   if (fs.existsSync(file)) fs.unlinkSync(file);
-}
-
-/**
- * 服务启动时将所有 status=running 的流水线标记为 interrupted，
- * 表示上次运行被非正常中断（进程被杀、崩溃等）。
- */
-export function markRunningPipelinesAsInterrupted(): void {
-  ensureDir(DATA_DIR);
-  const dirs = fs.readdirSync(DATA_DIR, { withFileTypes: true }).filter(d => d.isDirectory());
-  for (const d of dirs) {
-    const progress = getGenerateProgress(d.name);
-    if (progress && progress.status === 'running') {
-      progress.status = 'interrupted';
-      saveGenerateProgress(d.name, progress);
-      console.log(`[pipeline] 标记 ${d.name} 流水线为 interrupted（上次运行未正常结束）`);
-    }
-  }
 }
 
 // ─── 导出 ─────────────────────────────────────────────────────────────────────
