@@ -534,6 +534,13 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
             meta.status = 'writing';
             saveMeta(meta);
           }
+        },
+      });
+      steps.push({
+        name: `更新第${n}章记忆`,
+        skip: () => (getMemory(id)?.lastUpdatedChapter ?? 0) >= n,
+        run: async () => {
+          const text = getChapter(id, n)!;
           await updateMemoryAfterChapter(id, n, text);
         },
       });
