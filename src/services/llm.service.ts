@@ -1,6 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import type { Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const SSE_LOG_FILE = path.join(process.cwd(), 'logs', 'sse.log');
+fs.mkdirSync(path.dirname(SSE_LOG_FILE), { recursive: true });
 
 // ─── LLM 提供商配置 ──────────────────────────────────────────────────────────
 
@@ -39,7 +44,14 @@ export function sseHeaders(res: Response): void {
 }
 
 export function sendSSE(res: Response, event: string, data: unknown): void {
-  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  const line = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  res.write(line);
+  const logLine = `[${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}] ${line}`;
+  try {
+    fs.appendFileSync(SSE_LOG_FILE, logLine);
+  } catch (err) {
+    console.error('[SSE log]', err);
+  }
 }
 
 // ─── 流式写作（章节正文）─────────────────────────────────────────────────────

@@ -291,9 +291,17 @@ router.post('/:id/chapters/:n/write', async (req: Request, res: Response) => {
     const plan = getChapterPlan(meta.id, n);
 
     const userMsg = `请写《${meta.title}》第${n}章。
-${plan ? `本章标题：${plan.title}\n结尾要求：${plan.endingHook}` : '请根据上下文自然续写。'}
+${plan ? `本章标题：${plan.title}
+
+【本章情节节拍（严格按此顺序推进，不得添加节拍外的场景）】
+${plan.beats.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+
+【章节边界要求】
+- 写完第 ${plan.beats.length} 个节拍后立即停笔
+- 最后一幕：${plan.endingHook}
+- 禁止在节拍完成后添加任何额外场景（含其他视角、监视者、旁观者等）` : '请根据上下文自然续写。'}
 ${(req.body as { prompt?: string }).prompt ? '额外要求：' + (req.body as { prompt?: string }).prompt : ''}
-目标字数约 ${meta.wordsPerChapter} 字，注意网文节奏，结尾留悬念。`;
+目标字数约 ${meta.wordsPerChapter} 字。`;
 
     await streamToSSE(res, systemPrompt, userMsg, 6000, async (text) => {
       saveChapter(meta.id, n, text);
@@ -523,9 +531,13 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
         skip: () => !!getChapter(id, n),
         run: async () => {
           const chapterContext = buildChapterContext(id, n);
+          const plan = getChapterPlan(id, n);
+          const planInstruction = plan
+            ? `本章标题：${plan.title}\n\n【本章情节节拍（严格按此顺序推进，不得添加节拍外的场景）】\n${plan.beats.map((b, i) => `${i + 1}. ${b}`).join('\n')}\n\n【章节边界要求】\n- 写完第 ${plan.beats.length} 个节拍后立即停笔\n- 最后一幕：${plan.endingHook}\n- 禁止在节拍完成后添加任何额外场景（含其他视角、监视者、旁观者等）`
+            : '请根据上下文自然续写。';
           const text = await callClaude(
             buildSystemPrompt('chapter-writer', chapterContext),
-            `请写《${meta.title}》第${n}章，约${meta.wordsPerChapter}字，结尾留悬念`,
+            `请写《${meta.title}》第${n}章，约${meta.wordsPerChapter}字。\n${planInstruction}`,
             6000,
           );
           saveChapter(id, n, text);
