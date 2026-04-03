@@ -191,20 +191,23 @@ async function callDeepSeek(
  * Claude 通常会把 JSON 包在 ```json … ``` 中
  */
 export function extractJSON<T>(text: string): T | null {
-  // 尝试提取 ```json ... ``` 块
-  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  // 尝试提取 ```json ... ``` 块（兼容 ```json / ```typescript 等各种语言标识符）
+  const codeBlockMatch = text.match(/```[^\n]*\n([\s\S]*?)```/);
   if (codeBlockMatch?.[1]) {
     try {
       return JSON.parse(codeBlockMatch[1].trim()) as T;
-    } catch {
-      // fall through
+    } catch (error) {
+      const logLine = `[${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}] ${JSON.stringify(error)}`;
+      fs.appendFileSync(SSE_LOG_FILE, logLine);
     }
   }
 
   // 尝试直接解析整段文本
   try {
     return JSON.parse(text.trim()) as T;
-  } catch {
+  } catch(error) {
+    const logLine = `[${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}] '尝试直接解析整段文本:\n' ${JSON.stringify(error)}`;
+    fs.appendFileSync(SSE_LOG_FILE, logLine);
     return null;
   }
 }

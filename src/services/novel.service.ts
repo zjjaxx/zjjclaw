@@ -3,12 +3,25 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   NovelMeta,
+  NovelTemplate,
   Character,
   Outline,
   ChapterPlan,
   StoryMemory,
   CreateNovelRequest,
 } from '../types/index.js';
+
+const TEMPLATE_GENRE: Record<NovelTemplate, string> = {
+  'urban-supernatural': '都市异能',
+  'xianxia':            '玄幻修真',
+  'post-apocalyptic':   '末世重生',
+};
+
+const TEMPLATE_DEFAULTS: Record<NovelTemplate, { setting: string; protagonist: string; cheatType: string }> = {
+  'urban-supernatural': { setting: '都市', protagonist: '林凡', cheatType: '系统' },
+  'xianxia':            { setting: '苍云大陆', protagonist: '叶辰', cheatType: '古神传承' },
+  'post-apocalyptic':   { setting: '末日华夏', protagonist: '陈磊', cheatType: '重生+空间' },
+};
 
 // ─── 路径工具 ─────────────────────────────────────────────────────────────────
 
@@ -40,13 +53,17 @@ export function createNovel(req: CreateNovelRequest): NovelMeta {
   ensureDir(path.join(dir, 'chapters'));
   ensureDir(path.join(dir, 'chapter-plans'));
 
+  const template = req.template ?? 'urban-supernatural';
+  const defaults = TEMPLATE_DEFAULTS[template];
+
   const meta: NovelMeta = {
     id,
     title: req.title,
-    genre: '都市异能',
-    setting: req.setting ?? '都市',
-    protagonist: req.protagonist ?? '林凡',
-    cheatType: req.cheatType ?? '系统',
+    template,
+    genre: TEMPLATE_GENRE[template],
+    setting: req.setting ?? defaults.setting,
+    protagonist: req.protagonist ?? defaults.protagonist,
+    cheatType: req.cheatType ?? defaults.cheatType,
     targetChapters: req.targetChapters ?? 500,
     wordsPerChapter: 2500,
     status: 'init',
@@ -85,7 +102,10 @@ export function createNovel(req: CreateNovelRequest): NovelMeta {
 export function getMeta(id: string): NovelMeta | null {
   const file = path.join(novelDir(id), 'meta.json');
   if (!fs.existsSync(file)) return null;
-  return JSON.parse(fs.readFileSync(file, 'utf-8')) as NovelMeta;
+  const meta = JSON.parse(fs.readFileSync(file, 'utf-8')) as NovelMeta;
+  // 兼容旧数据：没有 template 字段时默认都市异能
+  if (!meta.template) meta.template = 'urban-supernatural';
+  return meta;
 }
 
 export function saveMeta(meta: NovelMeta): void {

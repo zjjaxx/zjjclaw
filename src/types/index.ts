@@ -1,10 +1,24 @@
+// ─── 小说模版 ──────────────────────────────────────────────────────────────────
+
+export type NovelTemplate =
+  | 'urban-supernatural'   // 都市异能
+  | 'xianxia'              // 玄幻修真
+  | 'post-apocalyptic';    // 末世重生
+
+export const TEMPLATE_LABELS: Record<NovelTemplate, string> = {
+  'urban-supernatural': '都市异能',
+  'xianxia': '玄幻修真',
+  'post-apocalyptic': '末世重生',
+};
+
 // ─── 小说元数据 ──────────────────────────────────────────────────────────────
 
 export interface NovelMeta {
   id: string;
   title: string;
+  template: NovelTemplate;   // 模版类型
   genre: string;
-  setting: string;           // 都市背景（城市名称）
+  setting: string;           // 背景（城市/世界名称）
   protagonist: string;       // 主角名
   cheatType: string;         // 金手指类型
   targetChapters: number;
@@ -128,11 +142,12 @@ export interface Skill {
 
 export interface CreateNovelRequest {
   title: string;
-  setting?: string;         // 城市背景，如"上海"
+  template?: NovelTemplate; // 模版类型，默认 urban-supernatural
+  setting?: string;         // 背景，如"上海"/"苍云大陆"/"2024年末日"
   protagonist?: string;     // 主角名
-  cheatType?: string;       // 金手指类型，如"系统"/"传承"/"神器"
+  cheatType?: string;       // 金手指类型，如"系统"/"传承"/"神器"/"重生记忆"
   targetChapters?: number;
-  themes?: string[];        // 主题标签，如["学霸","商战","修炼"]
+  themes?: string[];        // 主题标签
 }
 
 export interface ApiResponse<T = unknown> {

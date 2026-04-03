@@ -101,7 +101,7 @@ router.post('/:id/world', async (req: Request, res: Response) => {
 
     sseHeaders(res);
 
-    const systemPrompt = buildSystemPrompt('world-builder');
+    const systemPrompt = buildSystemPrompt('world-builder', '', meta.template);
     const userMsg = `请为以下小说构建世界观设定：
 标题：${meta.title}
 背景城市：${meta.setting}
@@ -134,7 +134,7 @@ router.post('/:id/power-system', async (req: Request, res: Response) => {
 
     const world = getWorld(meta.id);
     const context = world ? `### 世界观\n${world}` : '';
-    const systemPrompt = buildSystemPrompt('power-system-designer', context);
+    const systemPrompt = buildSystemPrompt('power-system-designer', context, meta.template);
 
     const userMsg = `请为《${meta.title}》设计完整的力量/修炼体系。
 金手指类型：${meta.cheatType}
@@ -163,7 +163,7 @@ router.post('/:id/characters', async (req: Request, res: Response) => {
     sseHeaders(res);
 
     const context = buildGeneralContext(meta.id);
-    const systemPrompt = buildSystemPrompt('character-creator', context);
+    const systemPrompt = buildSystemPrompt('character-creator', context, meta.template);
 
     const userMsg = `请为《${meta.title}》创建完整的人物体系，输出 JSON 格式。
 主角名：${meta.protagonist}
@@ -202,7 +202,7 @@ router.post('/:id/outline', async (req: Request, res: Response) => {
     sseHeaders(res);
 
     const context = buildGeneralContext(meta.id);
-    const systemPrompt = buildSystemPrompt('plot-architect', context);
+    const systemPrompt = buildSystemPrompt('plot-architect', context, meta.template);
 
     const userMsg = `请为《${meta.title}》创建完整故事大纲，输出 JSON 格式。
 目标章节数：${meta.targetChapters}章
@@ -243,7 +243,7 @@ router.post('/:id/chapters/plan', async (req: Request, res: Response) => {
     const memory = getMemory(meta.id);
     const outline = getOutline(meta.id);
 
-    const systemPrompt = buildSystemPrompt('chapter-planner', context);
+    const systemPrompt = buildSystemPrompt('chapter-planner', context, meta.template);
 
     const userMsg = `请为《${meta.title}》规划第 ${fromChapter} 到第 ${fromChapter + count - 1} 章，共 ${count} 章。
 输出 JSON 数组，每章格式：{ chapterNumber, title, pov, location, summary, beats, faceSlapMoment, breakthroughMoment, romanceMoment, endingHook, wordTarget }
@@ -287,7 +287,7 @@ router.post('/:id/chapters/:n/write', async (req: Request, res: Response) => {
     sendSSE(res, 'start', { chapter: n, title: `第${n}章` });
 
     const chapterContext = buildChapterContext(meta.id, n);
-    const systemPrompt = buildSystemPrompt('chapter-writer', chapterContext);
+    const systemPrompt = buildSystemPrompt('chapter-writer', chapterContext, meta.template);
     const plan = getChapterPlan(meta.id, n);
 
     const userMsg = `请写《${meta.title}》第${n}章。
@@ -405,7 +405,7 @@ router.post('/:id/chapters/:n/review', async (req: Request, res: Response) => {
     sseHeaders(res);
 
     const context = buildGeneralContext(meta.id);
-    const systemPrompt = buildSystemPrompt('novel-reviewer', context);
+    const systemPrompt = buildSystemPrompt('novel-reviewer', context, meta.template);
 
     const userMsg = `请审校《${meta.title}》第${n}章，给出修改意见：\n\n${chapterText}`;
 
@@ -465,7 +465,7 @@ async function updateMemoryAfterChapter(
   const oldMemory = getMemory(id);
   if (!meta || !oldMemory) return;
 
-  const systemPrompt = buildSystemPrompt('story-memory');
+  const systemPrompt = buildSystemPrompt('story-memory', '', meta.template);
   const userMsg = `请根据第${chapterN}章内容，更新故事记忆状态，输出完整 JSON。
 
 当前记忆：
@@ -516,7 +516,7 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
         const outline = getOutline(id);
         const arc = outline ? findCurrentArc(outline, batchStart) : null;
         const text = await callClaude(
-          buildSystemPrompt('chapter-planner', buildGeneralContext(id)),
+          buildSystemPrompt('chapter-planner', buildGeneralContext(id), meta.template),
           `请规划第${batchStart}到第${batchEnd}章，输出 JSON 数组。${arc ? '当前弧：' + JSON.stringify(arc) : ''}${memory ? ' 主角境界：' + memory.protagonistState.realm : ''}`,
           8000,
         );
@@ -536,7 +536,7 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
             ? `本章标题：${plan.title}\n\n【本章情节节拍（严格按此顺序推进，不得添加节拍外的场景）】\n${plan.beats.map((b, i) => `${i + 1}. ${b}`).join('\n')}\n\n【章节边界要求】\n- 写完第 ${plan.beats.length} 个节拍后立即停笔\n- 最后一幕：${plan.endingHook}\n- 禁止在节拍完成后添加任何额外场景（含其他视角、监视者、旁观者等）`
             : '请根据上下文自然续写。';
           const text = await callClaude(
-            buildSystemPrompt('chapter-writer', chapterContext),
+            buildSystemPrompt('chapter-writer', chapterContext, meta.template),
             `请写《${meta.title}》第${n}章，约${meta.wordsPerChapter}字。\n${planInstruction}`,
             6000,
           );
@@ -593,7 +593,7 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
       skip: () => !!getWorld(id),
       run: async () => {
         const text = await callClaude(
-          buildSystemPrompt('world-builder'),
+          buildSystemPrompt('world-builder', '', meta.template),
           `请为《${meta.title}》（背景：${meta.setting}，金手指：${meta.cheatType}）构建世界观设定`,
           4096,
         );
@@ -607,7 +607,7 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
       skip: () => !!getPowerSystem(id),
       run: async () => {
         const text = await callClaude(
-          buildSystemPrompt('power-system-designer', `### 世界观\n${getWorld(id)}`),
+          buildSystemPrompt('power-system-designer', `### 世界观\n${getWorld(id)}`, meta.template),
           `请为《${meta.title}》设计力量/修炼体系，金手指：${meta.cheatType}`,
           8000,
         );
@@ -621,12 +621,13 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
       skip: () => getCharacters(id).length > 0,
       run: async () => {
         const text = await callClaude(
-          buildSystemPrompt('character-creator', buildGeneralContext(id)),
+          buildSystemPrompt('character-creator', buildGeneralContext(id), meta.template),
           `请为《${meta.title}》创建人物体系，输出 JSON 数组`,
           8000,
         );
         const chars = extractJSON<Character[]>(text);
-        if (chars) saveCharacters(id, chars);
+        if (!chars || !Array.isArray(chars)) throw new Error('角色 JSON 解析失败，Claude 返回格式不符合预期');
+        saveCharacters(id, chars);
         meta.status = 'characters-created';
         saveMeta(meta);
       },
@@ -640,7 +641,7 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
           .map((r, i) => `第${i + 1}弧：第${r[0]}-${r[1]}章`)
           .join('；');
         const text = await callClaude(
-          buildSystemPrompt('plot-architect', buildGeneralContext(id)),
+          buildSystemPrompt('plot-architect', buildGeneralContext(id), meta.template),
           `请为《${meta.title}》生成故事大纲，总章节数：${meta.targetChapters}章，弧线章节范围：${arcHint}，输出 JSON`,
           30000,
         );
