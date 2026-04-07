@@ -71,6 +71,7 @@ export interface PlotArc {
   majorEvents: string[];
   faceSlapTargets: string[];   // 本弧需要打脸的对象
   realmBreakthrough?: string; // 本弧主角突破的境界
+  newCharacterHints?: string[]; // 本弧需要新增的角色提示（由 plot-architect 产出）
 }
 
 export interface Outline {

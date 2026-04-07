@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
+import type { ChatCompletionCreateParamsBase } from 'openai/resources/chat/completions';
 import type { Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -142,10 +143,11 @@ export async function callClaude(
   userMessage: string,
   maxTokens = 4096,
   provider?: LLMProvider,
+  response_format?:ChatCompletionCreateParamsBase['response_format'],
 ): Promise<string> {
   const p = provider ?? DEFAULT_PROVIDER;
   if (p === 'deepseek') {
-    return callDeepSeek(systemPrompt, userMessage, maxTokens);
+    return callDeepSeek(systemPrompt, userMessage, maxTokens,response_format);
   }
   return callAnthropic(systemPrompt, userMessage, maxTokens);
 }
@@ -171,6 +173,7 @@ async function callDeepSeek(
   systemPrompt: string,
   userMessage: string,
   maxTokens: number,
+  response_format?:ChatCompletionCreateParamsBase['response_format'],
 ): Promise<string> {
   const response = await deepseekClient.chat.completions.create({
     model: DEEPSEEK_MODEL,
@@ -179,6 +182,7 @@ async function callDeepSeek(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
     ],
+    response_format: response_format,
   });
 
   return response.choices[0]?.message?.content ?? '';
@@ -194,20 +198,7 @@ export function extractJSON<T>(text: string): T | null {
   // 尝试提取 ```json ... ``` 块（兼容 ```json / ```typescript 等各种语言标识符）
   const codeBlockMatch = text.match(/```[^\n]*\n([\s\S]*?)```/);
   if (codeBlockMatch?.[1]) {
-    try {
-      return JSON.parse(codeBlockMatch[1].trim()) as T;
-    } catch (error) {
-      const logLine = `[${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}] ${JSON.stringify(error)}`;
-      fs.appendFileSync(SSE_LOG_FILE, logLine);
-    }
+    return JSON.parse(codeBlockMatch[1].trim()) as T;
   }
-
-  // 尝试直接解析整段文本
-  try {
-    return JSON.parse(text.trim()) as T;
-  } catch(error) {
-    const logLine = `[${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}] '尝试直接解析整段文本:\n' ${JSON.stringify(error)}`;
-    fs.appendFileSync(SSE_LOG_FILE, logLine);
-    return null;
-  }
+  return JSON.parse(text.trim()) as T;
 }

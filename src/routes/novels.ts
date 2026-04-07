@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { buildSystemPrompt } from '../services/skill.service.js';
 import {
+  appendCharacters,
   buildChapterContext,
   buildGeneralContext,
   createNovel,
@@ -155,32 +156,64 @@ ${(req.body as { prompt?: string }).prompt ? '额外要求：' + (req.body as { 
 // ─── 角色创建 ─────────────────────────────────────────────────────────────────
 
 // POST /api/novels/:id/characters — SSE + 解析保存角色 JSON
+// 支持 mode: "core"（核心角色）| "arc"（弧线角色）| 缺省（旧版全量创建，兼容）
 router.post('/:id/characters', async (req: Request, res: Response) => {
   try {
     const meta = getMeta(req.params.id);
     if (!meta) { res.status(404).json({ success: false, error: '小说不存在' }); return; }
 
+    const body = req.body as { prompt?: string; mode?: 'core' | 'arc'; arcIndex?: number };
+    const mode = body.mode ?? 'full';
+
     sseHeaders(res);
 
     const context = buildGeneralContext(meta.id);
-    const systemPrompt = buildSystemPrompt('character-creator', context, meta.template);
+    let skillName: string;
+    let userMsg: string;
 
-    const userMsg = `请为《${meta.title}》创建完整的人物体系，输出 JSON 格式。
+    if (mode === 'core') {
+      skillName = 'core-character-creator';
+      userMsg = `请为《${meta.title}》创建核心人物（主角、核心女主、大Boss、关键配角），共 5-7 个角色，输出 JSON 数组。
 主角名：${meta.protagonist}
 金手指：${meta.cheatType}
-${(req.body as { prompt?: string }).prompt ? '额外要求：' + (req.body as { prompt?: string }).prompt : ''}
+${body.prompt ? '额外要求：' + body.prompt : ''}`;
+    } else if (mode === 'arc') {
+      skillName = 'arc-character-creator';
+      const outline = getOutline(meta.id);
+      const arcIdx = body.arcIndex ?? 0;
+      const arc = outline?.arcs[arcIdx];
+      const existingChars = getCharacters(meta.id);
+      const existingList = existingChars.map(c => `${c.name}（${c.role}）`).join('、');
+      userMsg = `请为《${meta.title}》的"${arc?.name ?? `第${arcIdx + 1}弧`}"弧创建新角色。
+已有角色（不要重复创建）：${existingList}
+${arc?.newCharacterHints?.length ? '本弧角色需求：\n' + arc.newCharacterHints.map((h, i) => `${i + 1}. ${h}`).join('\n') : ''}
+${arc ? '本弧剧情：' + arc.summary : ''}
+${body.prompt ? '额外要求：' + body.prompt : ''}
+请输出 JSON 数组`;
+    } else {
+      skillName = 'character-creator';
+      userMsg = `请为《${meta.title}》创建完整的人物体系，输出 JSON 格式。
+主角名：${meta.protagonist}
+金手指：${meta.cheatType}
+${body.prompt ? '额外要求：' + body.prompt : ''}
 
 请输出一个 JSON 数组，每个人物包含：name, role, appearance, personality, background, abilities, currentRealm, relationshipToProtagonist`;
+    }
+
+    const systemPrompt = buildSystemPrompt(skillName, context, meta.template);
 
     await streamToSSE(res, systemPrompt, userMsg, 4096, (text) => {
       const characters = extractJSON<Character[]>(text);
       if (characters && Array.isArray(characters)) {
-        saveCharacters(meta.id, characters);
+        if (mode === 'arc') {
+          appendCharacters(meta.id, characters);
+        } else {
+          saveCharacters(meta.id, characters);
+        }
         meta.status = 'characters-created';
         saveMeta(meta);
-        console.log(`[characters] 已保存 ${characters.length} 个角色`);
+        console.log(`[characters:${mode}] 已保存 ${characters.length} 个角色`);
       } else {
-        // 保存原始文本供调试
         console.warn('[characters] 无法解析 JSON，原始文本已在流中返回');
       }
     });
@@ -208,7 +241,8 @@ router.post('/:id/outline', async (req: Request, res: Response) => {
 目标章节数：${meta.targetChapters}章
 ${(req.body as { prompt?: string }).prompt ? '额外要求：' + (req.body as { prompt?: string }).prompt : ''}
 
-JSON 结构：{ premise, goldenFinger, overallConflict, endingVision, arcs: [{name, chapterRange, summary, majorEvents, faceSlapTargets, realmBreakthrough}] }`;
+JSON 结构：{ premise, goldenFinger, overallConflict, endingVision, arcs: [{name, chapterRange, summary, majorEvents, faceSlapTargets, realmBreakthrough, newCharacterHints}] }
+其中 newCharacterHints 是字符串数组，每弧 3-6 条，说明本弧需要新增什么类型的角色`;
 
     await streamToSSE(res, systemPrompt, userMsg, 6000, (text) => {
       const outline = extractJSON<Outline>(text);
@@ -372,15 +406,16 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
         }
       }
 
-      if (succeeded) {
-        sendSSE(res, 'step_done', { step: step.name });
+      if (!succeeded) {
+        sendSSE(res, 'done', { message: `生成中断：${step.name} 重试${MAX_RETRIES}次后仍失败` });
+        res.end();
+        return;
       }
+
+      sendSSE(res, 'step_done', { step: step.name });
     }
 
-
-    sendSSE(res, 'done', {
-      message:'自动生成完成'
-    });
+    sendSSE(res, 'done', { message: '自动生成完成' });
     res.end();
   } catch (err) {
     handleError(res, err, 'POST /generate');
@@ -476,7 +511,7 @@ ${chapterText}
 
 请更新并输出完整的 StoryMemory JSON（包含所有字段）。`;
 
-  const result = await callClaude(systemPrompt, userMsg, 3000);
+  const result = await callClaude(systemPrompt, userMsg, 3000,undefined,{type: 'json_object'});
   const newMemory = extractJSON<StoryMemory>(result);
   if (newMemory) {
     newMemory.lastUpdatedChapter = chapterN;
@@ -504,9 +539,66 @@ function findCurrentArc(outline: Outline, chapterNum: number) {
 function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): PipelineStep[] {
   const total = meta.targetChapters;
   const steps: PipelineStep[] = [];
+  const arcRanges = computeArcRanges(total);
+  const insertedArcs = new Set<number>();
 
   for (let batchStart = 1; batchStart <= total; batchStart += BATCH_SIZE) {
     const batchEnd = Math.min(batchStart + BATCH_SIZE - 1, total);
+
+    // 在每弧第一个 batch 之前插入弧线角色创建步骤
+    const arcIndex = arcRanges.findIndex(
+      ([s, e]) => batchStart >= s && batchStart <= e,
+    );
+    if (arcIndex >= 0 && !insertedArcs.has(arcIndex)) {
+      insertedArcs.add(arcIndex);
+      const arcNum = arcIndex + 1;
+      steps.push({
+        name: `补充第${arcNum}弧角色`,
+        skip: () => {
+          const outline = getOutline(id);
+          if (!outline?.arcs[arcIndex]) return true;
+          const hints = outline.arcs[arcIndex].newCharacterHints;
+          if (!hints || hints.length === 0) return true;
+          // 如果该弧已经补充过角色（通过检查是否有 firstAppearance 在该弧范围内的非核心角色）
+          const chars = getCharacters(id);
+          const [arcStart, arcEnd] = arcRanges[arcIndex];
+          const hasArcChars = chars.some(
+            c => c.firstAppearance && c.firstAppearance >= arcStart && c.firstAppearance <= arcEnd
+              && (c.role === 'antagonist' || c.role === 'cannon_fodder'),
+          );
+          return hasArcChars;
+        },
+        run: async () => {
+          const outline = getOutline(id);
+          const arc = outline?.arcs[arcIndex];
+          if (!arc?.newCharacterHints?.length) return;
+          const existingChars = getCharacters(id);
+          const existingList = existingChars.map(c => `${c.name}（${c.role}）`).join('、');
+          const text = await callClaude(
+            buildSystemPrompt('arc-character-creator', buildGeneralContext(id), meta.template),
+            `请为《${meta.title}》的"${arc.name}"弧（第${arc.chapterRange[0]}-${arc.chapterRange[1]}章）创建新角色。
+
+已有角色（不要重复创建）：${existingList}
+
+本弧角色需求提示：
+${arc.newCharacterHints.map((h, i) => `${i + 1}. ${h}`).join('\n')}
+
+本弧核心剧情：${arc.summary}
+本弧打脸对象：${arc.faceSlapTargets.join('、')}
+
+请创建 3-6 个新角色，输出 JSON 数组`,
+            8000,
+            undefined,
+            {type: 'json_object'},
+          );
+          const chars = extractJSON<Character[]>(text);
+          if (chars && Array.isArray(chars)) {
+            appendCharacters(id, chars);
+            console.log(`[arc-chars] 第${arcNum}弧补充了 ${chars.length} 个角色`);
+          }
+        },
+      });
+    }
 
     steps.push({
       name: `规划第${batchStart}-${batchEnd}章`,
@@ -519,6 +611,8 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
           buildSystemPrompt('chapter-planner', buildGeneralContext(id), meta.template),
           `请规划第${batchStart}到第${batchEnd}章，输出 JSON 数组。${arc ? '当前弧：' + JSON.stringify(arc) : ''}${memory ? ' 主角境界：' + memory.protagonistState.realm : ''}`,
           8000,
+          undefined,
+          {type: 'json_object'},
         );
         const plans = extractJSON<ChapterPlan[]>(text);
         if (plans) for (const p of plans) saveChapterPlan(id, p.chapterNumber, p);
@@ -588,6 +682,7 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
   const meta = getMeta(id)!;
 
   return [
+    // Phase 1: 世界观 + 力量体系
     {
       name: '构建世界观',
       skip: () => !!getWorld(id),
@@ -616,22 +711,29 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
         saveMeta(meta);
       },
     },
+
+    // Phase 2: 核心角色（仅主角、核心女主、大Boss、关键配角 5-7 个）
     {
-      name: '创建人物',
+      name: '创建核心角色',
       skip: () => getCharacters(id).length > 0,
       run: async () => {
         const text = await callClaude(
-          buildSystemPrompt('character-creator', buildGeneralContext(id), meta.template),
-          `请为《${meta.title}》创建人物体系，输出 JSON 数组`,
+          buildSystemPrompt('core-character-creator', buildGeneralContext(id), meta.template),
+          `请为《${meta.title}》创建核心人物（主角、核心女主、大Boss、关键配角），共 5-7 个角色，输出 JSON 数组`,
           8000,
+          undefined,
+          {type: 'json_object'},
         );
         const chars = extractJSON<Character[]>(text);
-        if (!chars || !Array.isArray(chars)) throw new Error('角色 JSON 解析失败，Claude 返回格式不符合预期');
-        saveCharacters(id, chars);
-        meta.status = 'characters-created';
-        saveMeta(meta);
+        if (chars){
+          saveCharacters(id, chars);
+          meta.status = 'characters-created';
+          saveMeta(meta);
+        }
       },
     },
+
+    // Phase 3: 大纲（基于核心角色，产出各弧结构 + newCharacterHints）
     {
       name: '生成大纲',
       skip: () => !!getOutline(id),
@@ -642,13 +744,17 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
           .join('；');
         const text = await callClaude(
           buildSystemPrompt('plot-architect', buildGeneralContext(id), meta.template),
-          `请为《${meta.title}》生成故事大纲，总章节数：${meta.targetChapters}章，弧线章节范围：${arcHint}，输出 JSON`,
+          `请为《${meta.title}》生成故事大纲，总章节数：${meta.targetChapters}章，弧线章节范围：${arcHint}。每弧必须包含 newCharacterHints 字段（3-6条角色提示，说明本弧需要新增什么角色），输出 JSON`,
           30000,
+          undefined,
+          {type: 'json_object'},
         );
         const outline = extractJSON<Outline>(text);
         if (outline) { saveOutline(id, outline); meta.status = 'outlined'; saveMeta(meta); }
       },
     },
+
+    // Phase 4: 按弧写作（每弧开头自动补充弧线角色）
     ...buildChapterSteps(id, meta),
   ];
 }

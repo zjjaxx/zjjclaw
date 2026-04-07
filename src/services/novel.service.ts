@@ -161,6 +161,13 @@ export function saveCharacters(id: string, characters: Character[]): void {
   );
 }
 
+export function appendCharacters(id: string, newChars: Character[]): void {
+  const existing = getCharacters(id);
+  const existingNames = new Set(existing.map(c => c.name));
+  const deduped = newChars.filter(c => !existingNames.has(c.name));
+  saveCharacters(id, [...existing, ...deduped]);
+}
+
 // ─── 大纲 ─────────────────────────────────────────────────────────────────────
 
 export function getOutline(id: string): Outline | null {
