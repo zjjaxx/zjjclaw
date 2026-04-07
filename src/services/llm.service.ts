@@ -196,7 +196,7 @@ async function callDeepSeek(
  */
 export function extractJSON<T>(text: string): T | null {
   // 尝试提取 ```json ... ``` 块（兼容 ```json / ```typescript 等各种语言标识符）
-  const codeBlockMatch = text.match(/```[^\n]*\n([\s\S]*?)```/);
+  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockMatch?.[1]) {
     return JSON.parse(codeBlockMatch[1].trim()) as T;
   }

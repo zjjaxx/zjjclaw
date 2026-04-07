@@ -511,7 +511,7 @@ ${chapterText}
 
 请更新并输出完整的 StoryMemory JSON（包含所有字段）。`;
 
-  const result = await callClaude(systemPrompt, userMsg, 3000,undefined,{type: 'json_object'});
+  const result = await callClaude(systemPrompt, userMsg, 8000,undefined,{type: 'json_object'});
   const newMemory = extractJSON<StoryMemory>(result);
   if (newMemory) {
     newMemory.lastUpdatedChapter = chapterN;
