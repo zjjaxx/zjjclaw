@@ -166,6 +166,17 @@ init → world-built → power-system-designed → characters-created → outlin
 
 以下示例使用 curl，服务运行于 `http://localhost:7879`。
 
+### 市场分析
+```bash
+curl -X POST http://localhost:7879/api/novels/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages":[{
+        "role":"user",
+        "content":"写小说"
+    }]
+  }'
+```
 ### 1. 创建小说项目
 
 **都市异能（默认）**
