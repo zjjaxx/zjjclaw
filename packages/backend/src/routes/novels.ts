@@ -10,15 +10,18 @@ import {
   getCharacters,
   getChapter,
   getChapterPlan,
+  getGenerateProgress,
   getMeta,
   getMemory,
   getOutline,
   getPowerSystem,
   getWorld,
+  listGeneratedChapters,
   listNovels,
   saveCharacters,
   saveChapter,
   saveChapterPlan,
+  saveGenerateProgress,
   saveMeta,
   saveMemory,
   saveOutline,
@@ -58,6 +61,29 @@ function handleError(res: Response, err: unknown, context: string): void {
     sendSSE(res, 'error', { message: String(err) });
     res.end();
   }
+}
+
+type GenerateStepStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+function buildGenerateStepStatuses(id: string, progress: PipelineProgress | null) {
+  const completed = new Set(progress?.completedSteps ?? []);
+
+  return buildGenerationPipeline(id).map((step) => {
+    let status: GenerateStepStatus = 'pending';
+
+    if (progress?.failedStep === step.name) {
+      status = 'failed';
+    } else if (progress?.currentStep === step.name && progress.status === 'running') {
+      status = 'running';
+    } else if (completed.has(step.name)) {
+      status = 'completed';
+    }
+
+    return {
+      name: step.name,
+      status,
+    };
+  });
 }
 
 // ─── 市场分析聊天 ─────────────────────────────────────────────────────────────
@@ -137,7 +163,17 @@ router.get('/:id', (req: Request, res: Response) => {
   try {
     const meta = getMeta(req.params.id);
     if (!meta) { res.status(404).json({ success: false, error: '小说不存在' }); return; }
-    res.json({ success: true, data: meta });
+    res.json({
+      success: true,
+      data: {
+        ...meta,
+        world: getWorld(meta.id) || null,
+        powerSystem: getPowerSystem(meta.id) || null,
+        characters: getCharacters(meta.id),
+        outline: getOutline(meta.id),
+        chapters: listGeneratedChapters(meta.id),
+      },
+    });
   } catch (err) {
     handleError(res, err, 'GET /novels/:id');
   }
@@ -413,16 +449,29 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
     if (!meta) { res.status(404).json({ success: false, error: '小说不存在' }); return; }
 
     const body = req.body as { restart?: boolean };
+    const existingProgress = getGenerateProgress(meta.id);
 
     if (body.restart) {
       deleteGenerateProgress(meta.id);
+    } else if (existingProgress?.status === 'running') {
+      res.status(409).json({ success: false, error: '当前已有生成任务正在执行' });
+      return;
     }
+
+    const steps = buildGenerationPipeline(meta.id);
+    const progress: PipelineProgress = {
+      status: 'running',
+      completedSteps: [],
+      currentStep: null,
+      failedStep: null,
+      failedError: null,
+      startedAt: existingProgress?.startedAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    saveGenerateProgress(meta.id, progress);
 
     sseHeaders(res);
     sendSSE(res, 'start', { message: `开始自动生成《${meta.title}》` });
-
-
-    const steps = buildGenerationPipeline(meta.id);
 
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 5000;
@@ -430,8 +479,17 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
     for (const step of steps) {
       if (step.skip?.()) {
         sendSSE(res, 'skip', { step: step.name });
+        progress.completedSteps = [...new Set([...progress.completedSteps, step.name])];
+        progress.updatedAt = new Date().toISOString();
+        saveGenerateProgress(meta.id, progress);
         continue;
       }
+
+      progress.currentStep = step.name;
+      progress.failedStep = null;
+      progress.failedError = null;
+      progress.updatedAt = new Date().toISOString();
+      saveGenerateProgress(meta.id, progress);
       sendSSE(res, 'step', { step: step.name, message: `正在执行：${step.name}` });
 
       let succeeded = false;
@@ -452,6 +510,11 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
             });
             await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
           } else {
+            progress.status = 'failed';
+            progress.failedStep = step.name;
+            progress.failedError = String(err);
+            progress.updatedAt = new Date().toISOString();
+            saveGenerateProgress(meta.id, progress);
             sendSSE(res, 'step_error', { step: step.name, error: String(err), message: `${step.name} 重试${MAX_RETRIES}次后仍失败` });
           }
         }
@@ -463,12 +526,33 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
         return;
       }
 
+      progress.completedSteps = [...new Set([...progress.completedSteps, step.name])];
+      progress.currentStep = null;
+      progress.updatedAt = new Date().toISOString();
+      saveGenerateProgress(meta.id, progress);
       sendSSE(res, 'step_done', { step: step.name });
     }
 
+    progress.status = 'completed';
+    progress.currentStep = null;
+    progress.failedStep = null;
+    progress.failedError = null;
+    progress.updatedAt = new Date().toISOString();
+    saveGenerateProgress(meta.id, progress);
     sendSSE(res, 'done', { message: '自动生成完成' });
     res.end();
   } catch (err) {
+    const novelId = req.params.id;
+    const progress = getGenerateProgress(novelId);
+    if (progress) {
+      const activeStep = progress.currentStep;
+      progress.status = 'failed';
+      progress.failedStep = progress.failedStep ?? activeStep;
+      progress.failedError = String(err);
+      progress.currentStep = null;
+      progress.updatedAt = new Date().toISOString();
+      saveGenerateProgress(novelId, progress);
+    }
     handleError(res, err, 'POST /generate');
   }
 });
@@ -503,6 +587,33 @@ router.post('/:id/chapters/:n/review', async (req: Request, res: Response) => {
 });
 
 // ─── 进度 & 导出 ──────────────────────────────────────────────────────────────
+
+// GET /api/novels/:id/generate/status — 查看流水线进度
+router.get('/:id/generate/status', (req: Request, res: Response) => {
+  try {
+    const meta = getMeta(req.params.id);
+    if (!meta) { res.status(404).json({ success: false, error: '小说不存在' }); return; }
+
+    const progress = getGenerateProgress(meta.id);
+    const steps = buildGenerateStepStatuses(meta.id, progress);
+
+    res.json({
+      success: true,
+      data: {
+        status: progress?.status ?? 'idle',
+        currentStep: progress?.currentStep ?? null,
+        failedStep: progress?.failedStep ?? null,
+        failedError: progress?.failedError ?? null,
+        startedAt: progress?.startedAt ?? null,
+        updatedAt: progress?.updatedAt ?? null,
+        completedSteps: progress?.completedSteps ?? [],
+        steps,
+      },
+    });
+  } catch (err) {
+    handleError(res, err, 'GET /generate/status');
+  }
+});
 
 // GET /api/novels/:id/status — 查看写作进度
 router.get('/:id/status', (req: Request, res: Response) => {

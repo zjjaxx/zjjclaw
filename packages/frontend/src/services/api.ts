@@ -24,17 +24,39 @@ export type Novel = {
   status?: string
 }
 
+export type GeneratedChapter = {
+  number: number
+  content: string
+}
+
 export type NovelDetail = Novel & {
-  world?: unknown
-  powerSystem?: unknown
-  characters?: unknown
-  outline?: unknown
-  chapters?: unknown[]
+  world?: string | null
+  powerSystem?: string | null
+  characters?: unknown[]
+  outline?: Record<string, unknown> | null
+  chapters?: GeneratedChapter[]
+}
+
+export type GenerateStepStatus = 'pending' | 'running' | 'completed' | 'failed'
+
+export type GenerateStatus = {
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'interrupted'
+  currentStep: string | null
+  failedStep: string | null
+  failedError: string | null
+  startedAt: string | null
+  updatedAt: string | null
+  completedSteps: string[]
+  steps: Array<{
+    name: string
+    status: GenerateStepStatus
+  }>
 }
 
 export const novelsApi = {
-  list: () => apiFetch<Novel[]>('/novels'),
-  get: (id: string) => apiFetch<NovelDetail>(`/novels/${id}`),
+  list: () => apiFetch<{ data: Novel[] }>('/novels'),
+  get: (id: string) => apiFetch<{ data: NovelDetail }>(`/novels/${id}`),
+  getGenerateStatus: (id: string) => apiFetch<{ data: GenerateStatus }>(`/novels/${id}/generate/status`),
   create: (body: { title: string; template: string; premise?: string }) =>
     apiFetch<Novel>('/novels', { method: 'POST', body: JSON.stringify(body) }),
   exportUrl: (id: string) => `${BASE_URL}/novels/${id}/export`,

@@ -41,22 +41,34 @@ function NewNovelPage() {
   })
 
   return (
-    <div className="p-8 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-8">新建小说项目</h1>
+    <div className="p-10 max-w-xl mx-auto">
+      <div className="mb-10">
+        <h1 className="font-sans font-medium text-2xl tracking-[-0.04em] text-foreground mb-2">
+          新建小说项目
+        </h1>
+        <p className="font-serif text-sm text-muted-foreground">
+          填写基本信息，AI 将以此为基础生成完整的世界观与故事架构
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="space-y-6">
         <Field label="标题" error={errors.title?.message}>
           <input
             {...register('title')}
             placeholder="输入小说名称"
-            className="w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-lg px-3 py-2.5 text-sm font-sans border bg-surface-100
+              focus:outline-none transition-colors duration-150 placeholder:text-muted-foreground
+              text-foreground"
+            style={{ borderColor: 'var(--color-border-medium)' }}
           />
         </Field>
 
         <Field label="模板类型" error={errors.template?.message}>
           <select
             {...register('template')}
-            className="w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-lg px-3 py-2.5 text-sm font-sans border bg-surface-100
+              focus:outline-none transition-colors duration-150 text-foreground"
+            style={{ borderColor: 'var(--color-border-medium)' }}
           >
             {TEMPLATES.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
@@ -69,18 +81,28 @@ function NewNovelPage() {
             {...register('premise')}
             rows={5}
             placeholder="简述核心设定或故事方向，AI 将以此为基础进行创作..."
-            className="w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            className="w-full rounded-lg px-3 py-2.5 text-sm font-serif border bg-surface-100
+              focus:outline-none transition-colors duration-150 resize-none
+              placeholder:text-muted-foreground text-foreground leading-relaxed"
+            style={{ borderColor: 'var(--color-border-medium)' }}
           />
         </Field>
 
         {mutation.error && (
-          <p className="text-sm text-destructive">{String(mutation.error)}</p>
+          <p className="text-sm font-sans" style={{ color: 'var(--color-destructive)' }}>
+            {String(mutation.error)}
+          </p>
         )}
 
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          className="w-full py-2.5 px-4 rounded-lg text-sm font-sans font-medium
+            transition-colors duration-150 disabled:opacity-50 hover:text-destructive"
+          style={{
+            backgroundColor: 'var(--color-primary)',
+            color: 'var(--color-primary-foreground)',
+          }}
         >
           {mutation.isPending ? '创建中...' : '创建项目'}
         </button>
@@ -100,9 +122,13 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium">{label}</label>
+      <label className="text-sm font-sans font-medium text-foreground">{label}</label>
       {children}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && (
+        <p className="text-xs font-sans" style={{ color: 'var(--color-destructive)' }}>
+          {error}
+        </p>
+      )}
     </div>
   )
 }

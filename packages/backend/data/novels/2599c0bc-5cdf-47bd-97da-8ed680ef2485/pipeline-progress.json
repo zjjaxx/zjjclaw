@@ -1,0 +1,15 @@
+{
+  "status": "interrupted",
+  "completedSteps": [
+    "构建世界观",
+    "设计力量体系",
+    "创建核心角色",
+    "生成大纲",
+    "补充第1弧角色"
+  ],
+  "currentStep": null,
+  "failedStep": "规划第1-10章",
+  "failedError": "后端已重启，生成任务已中断，请点击继续生成",
+  "startedAt": "2026-04-09T09:16:27.182Z",
+  "updatedAt": "2026-04-09T10:02:54.532Z"
+}

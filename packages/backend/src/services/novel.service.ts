@@ -43,6 +43,10 @@ function planFile(id: string, n: number): string {
   return path.join(novelDir(id), 'chapter-plans', `plan-${String(n).padStart(3, '0')}.json`);
 }
 
+function progressFile(id: string): string {
+  return path.join(novelDir(id), 'pipeline-progress.json');
+}
+
 // ─── 初始化 ───────────────────────────────────────────────────────────────────
 
 export function createNovel(req: CreateNovelRequest): NovelMeta {
@@ -215,6 +219,29 @@ export function getChapterPlan(id: string, n: number): ChapterPlan | null {
 
 export function saveChapterPlan(id: string, n: number, plan: ChapterPlan): void {
   fs.writeFileSync(planFile(id, n), JSON.stringify(plan, null, 2));
+}
+
+export interface GeneratedChapter {
+  number: number;
+  content: string;
+}
+
+export function listGeneratedChapters(id: string): GeneratedChapter[] {
+  const dir = path.join(novelDir(id), 'chapters');
+  if (!fs.existsSync(dir)) return [];
+
+  return fs
+    .readdirSync(dir)
+    .filter(file => /^chapter-\d+\.md$/.test(file))
+    .sort((a, b) => a.localeCompare(b))
+    .map((file) => {
+      const match = file.match(/^chapter-(\d+)\.md$/);
+      const number = match ? parseInt(match[1], 10) : 0;
+      return {
+        number,
+        content: fs.readFileSync(path.join(dir, file), 'utf-8'),
+      };
+    });
 }
 
 // ─── 上下文构建助手 ───────────────────────────────────────────────────────────
@@ -397,10 +424,38 @@ export interface PipelineProgress {
   updatedAt: string;
 }
 
+export function getGenerateProgress(id: string): PipelineProgress | null {
+  const file = progressFile(id);
+  if (!fs.existsSync(file)) return null;
+  return JSON.parse(fs.readFileSync(file, 'utf-8')) as PipelineProgress;
+}
+
+export function saveGenerateProgress(id: string, progress: PipelineProgress): void {
+  fs.writeFileSync(progressFile(id), JSON.stringify(progress, null, 2));
+}
+
+export function interruptRunningPipelines(reason = '后端已重启，生成任务已中断，请点击继续生成'): number {
+  let interruptedCount = 0;
+
+  for (const novel of listNovels()) {
+    const progress = getGenerateProgress(novel.id);
+    if (!progress || progress.status !== 'running') continue;
+
+    progress.status = 'interrupted';
+    progress.failedStep = progress.failedStep ?? progress.currentStep;
+    progress.failedError = reason;
+    progress.currentStep = null;
+    progress.updatedAt = new Date().toISOString();
+    saveGenerateProgress(novel.id, progress);
+    interruptedCount += 1;
+  }
+
+  return interruptedCount;
+}
 
 
 export function deleteGenerateProgress(id: string): void {
-  const file = path.join(novelDir(id), 'pipeline-progress.json');
+  const file = progressFile(id);
   if (fs.existsSync(file)) fs.unlinkSync(file);
 }
 

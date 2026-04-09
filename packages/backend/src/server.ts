@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { router as novelsRouter } from './routes/novels.js';
 import { loadSkills } from './services/skill.service.js';
+import { interruptRunningPipelines } from './services/novel.service.js';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 7879;
@@ -21,9 +22,13 @@ app.get('/api/health', (_req, res) => {
 // ─── 启动 ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   const skills = loadSkills();
+  const interruptedPipelines = interruptRunningPipelines();
   console.log(`\n🚀 zjjclaw 服务启动成功`);
   console.log(`   地址: http://localhost:${PORT}`);
   console.log(`   已加载 Skills: ${skills.map(s => s.name).join(', ')}`);
+  if (interruptedPipelines > 0) {
+    console.log(`   已中断遗留生成任务: ${interruptedPipelines} 个`);
+  }
   console.log(`\n📖 API 端点:`);
   console.log(`   POST   /api/novels                       创建小说项目`);
   console.log(`   GET    /api/novels                       列出所有项目`);

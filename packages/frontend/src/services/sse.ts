@@ -45,6 +45,52 @@ export function streamNovelAction(
   })
 }
 
+// ─── 全流程生成流 ────────────────────────────────────────────────────────────────
+
+export type GenerateEvent =
+  | { event: 'start'; data: { message: string } }
+  | { event: 'step'; data: { step: string; message: string } }
+  | { event: 'step_done'; data: { step: string } }
+  | { event: 'step_retry'; data: { step: string; attempt: number; maxRetries: number; error: string; message: string } }
+  | { event: 'step_error'; data: { step: string; error: string; message: string } }
+  | { event: 'skip'; data: { step: string } }
+  | { event: 'done'; data: { message: string } }
+  | { event: 'error'; data: { message: string } }
+
+export type GenerateHandlers = {
+  onEvent: (ev: GenerateEvent) => void
+  onClose?: () => void
+}
+
+export function streamGenerate(
+  novelId: string,
+  restart: boolean,
+  handlers: GenerateHandlers,
+  signal?: AbortSignal,
+) {
+  return fetchEventSource(`${BASE_URL}/novels/${novelId}/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ restart }),
+    signal,
+    onmessage(ev) {
+      try {
+        const data = JSON.parse(ev.data)
+        handlers.onEvent({ event: ev.event as GenerateEvent['event'], data } as GenerateEvent)
+      } catch {
+        // ignore malformed
+      }
+    },
+    onerror(err) {
+      handlers.onEvent({ event: 'error', data: { message: String(err) } })
+      throw err
+    },
+    onclose() {
+      handlers.onClose?.()
+    },
+  })
+}
+
 // ─── AG-UI 市场聊天流 ──────────────────────────────────────────────────────────
 
 type AGUIChunk =
@@ -91,8 +137,14 @@ export function streamMarketChat(
         const chunk = JSON.parse(ev.data) as AGUIChunk
         if (chunk.type === 'TEXT_MESSAGE_CONTENT') {
           handlers.onDelta(chunk.delta)
+        } else if (chunk.type === 'RUN_FINISHED') {
+          handlers.onDone?.()
         }
       } catch { /* ignore */ }
+    },
+    onclose() {
+      handlers.onDone?.()
+      throw new Error('stream closed')
     },
     onerror(err) {
       handlers.onError?.(err)

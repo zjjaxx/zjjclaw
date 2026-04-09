@@ -3,7 +3,6 @@ import path from 'path';
 import matter from 'gray-matter';
 import type { NovelTemplate, Skill } from '../types/index.js';
 
-const SKILLS_DIR = path.join(process.cwd(), 'skills');       // 默认 urban-supernatural
 const TEMPLATES_DIR = path.join(process.cwd(), 'templates'); // 模版专属技能
 
 // 每个模版独立缓存
@@ -16,41 +15,22 @@ const TEMPLATE_ROLES: Record<NovelTemplate, string> = {
 };
 
 /**
- * 扫描技能目录：优先加载模版专属技能，缺失时回退到 skills/ 默认技能
+ * 扫描模版目录：每个模版只加载自身 templates/<template> 下的技能
  */
 export function loadSkills(template: NovelTemplate = 'urban-supernatural'): Skill[] {
   if (skillsCacheMap.has(template)) return skillsCacheMap.get(template)!;
 
   const templateDir = path.join(TEMPLATES_DIR, template);
-  const hasTemplateDir = template !== 'urban-supernatural' && fs.existsSync(templateDir);
-
-  // 收集所有技能名（先模版目录，再默认目录）
-  const skillNames = new Set<string>();
-
-  if (hasTemplateDir) {
-    fs.readdirSync(templateDir, { withFileTypes: true })
-      .filter(d => d.isDirectory())
-      .forEach(d => skillNames.add(d.name));
-  }
-
-  if (fs.existsSync(SKILLS_DIR)) {
-    fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
-      .filter(d => d.isDirectory())
-      .forEach(d => skillNames.add(d.name));
+  if (!fs.existsSync(templateDir)) {
+    console.warn(`[SkillService] 未找到模板目录: ${templateDir}`);
+    skillsCacheMap.set(template, []);
+    return [];
   }
 
   const skills: Skill[] = [];
 
-  for (const name of skillNames) {
-    // 优先用模版专属，回退到默认
-    const templateSkillPath = path.join(templateDir, name, 'SKILL.md');
-    const rootSkillPath = path.join(SKILLS_DIR, name, 'SKILL.md');
-
-    const skillPath =
-      (hasTemplateDir && fs.existsSync(templateSkillPath))
-        ? templateSkillPath
-        : rootSkillPath;
-
+  for (const dirent of fs.readdirSync(templateDir, { withFileTypes: true }).filter(d => d.isDirectory())) {
+    const skillPath = path.join(templateDir, dirent.name, 'SKILL.md');
     if (!fs.existsSync(skillPath)) continue;
 
     try {

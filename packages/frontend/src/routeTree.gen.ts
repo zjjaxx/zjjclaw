@@ -14,7 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as NovelsIndexRouteImport } from './routes/novels/index'
 import { Route as NovelsNewRouteImport } from './routes/novels/new'
 import { Route as NovelsIdRouteImport } from './routes/novels/$id'
-import { Route as NovelsIdWorldRouteImport } from './routes/novels/$id.world'
+import { Route as NovelsIdGenerateRouteImport } from './routes/novels/$id_.generate'
 
 const MarketRoute = MarketRouteImport.update({
   id: '/market',
@@ -41,36 +41,36 @@ const NovelsIdRoute = NovelsIdRouteImport.update({
   path: '/novels/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NovelsIdWorldRoute = NovelsIdWorldRouteImport.update({
-  id: '/world',
-  path: '/world',
-  getParentRoute: () => NovelsIdRoute,
+const NovelsIdGenerateRoute = NovelsIdGenerateRouteImport.update({
+  id: '/novels/$id_/generate',
+  path: '/novels/$id/generate',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/market': typeof MarketRoute
-  '/novels/$id': typeof NovelsIdRouteWithChildren
+  '/novels/$id': typeof NovelsIdRoute
   '/novels/new': typeof NovelsNewRoute
   '/novels/': typeof NovelsIndexRoute
-  '/novels/$id/world': typeof NovelsIdWorldRoute
+  '/novels/$id/generate': typeof NovelsIdGenerateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/market': typeof MarketRoute
-  '/novels/$id': typeof NovelsIdRouteWithChildren
+  '/novels/$id': typeof NovelsIdRoute
   '/novels/new': typeof NovelsNewRoute
   '/novels': typeof NovelsIndexRoute
-  '/novels/$id/world': typeof NovelsIdWorldRoute
+  '/novels/$id/generate': typeof NovelsIdGenerateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/market': typeof MarketRoute
-  '/novels/$id': typeof NovelsIdRouteWithChildren
+  '/novels/$id': typeof NovelsIdRoute
   '/novels/new': typeof NovelsNewRoute
   '/novels/': typeof NovelsIndexRoute
-  '/novels/$id/world': typeof NovelsIdWorldRoute
+  '/novels/$id_/generate': typeof NovelsIdGenerateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,7 +80,7 @@ export interface FileRouteTypes {
     | '/novels/$id'
     | '/novels/new'
     | '/novels/'
-    | '/novels/$id/world'
+    | '/novels/$id/generate'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -88,7 +88,7 @@ export interface FileRouteTypes {
     | '/novels/$id'
     | '/novels/new'
     | '/novels'
-    | '/novels/$id/world'
+    | '/novels/$id/generate'
   id:
     | '__root__'
     | '/'
@@ -96,15 +96,16 @@ export interface FileRouteTypes {
     | '/novels/$id'
     | '/novels/new'
     | '/novels/'
-    | '/novels/$id/world'
+    | '/novels/$id_/generate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MarketRoute: typeof MarketRoute
-  NovelsIdRoute: typeof NovelsIdRouteWithChildren
+  NovelsIdRoute: typeof NovelsIdRoute
   NovelsNewRoute: typeof NovelsNewRoute
   NovelsIndexRoute: typeof NovelsIndexRoute
+  NovelsIdGenerateRoute: typeof NovelsIdGenerateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -144,34 +145,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NovelsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/novels/$id/world': {
-      id: '/novels/$id/world'
-      path: '/world'
-      fullPath: '/novels/$id/world'
-      preLoaderRoute: typeof NovelsIdWorldRouteImport
-      parentRoute: typeof NovelsIdRoute
+    '/novels/$id_/generate': {
+      id: '/novels/$id_/generate'
+      path: '/novels/$id/generate'
+      fullPath: '/novels/$id/generate'
+      preLoaderRoute: typeof NovelsIdGenerateRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface NovelsIdRouteChildren {
-  NovelsIdWorldRoute: typeof NovelsIdWorldRoute
-}
-
-const NovelsIdRouteChildren: NovelsIdRouteChildren = {
-  NovelsIdWorldRoute: NovelsIdWorldRoute,
-}
-
-const NovelsIdRouteWithChildren = NovelsIdRoute._addFileChildren(
-  NovelsIdRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MarketRoute: MarketRoute,
-  NovelsIdRoute: NovelsIdRouteWithChildren,
+  NovelsIdRoute: NovelsIdRoute,
   NovelsNewRoute: NovelsNewRoute,
   NovelsIndexRoute: NovelsIndexRoute,
+  NovelsIdGenerateRoute: NovelsIdGenerateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

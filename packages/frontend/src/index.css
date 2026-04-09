@@ -1,58 +1,80 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-  }
+@theme {
+  /* Fonts — Cursor-inspired three-voice system */
+  --font-sans: "Outfit", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Lora", "Iowan Old Style", "Palatino Linotype", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, "Courier New", monospace;
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
+  /* Brand palette */
+  --color-cursor-dark: #26251e;
+  --color-cursor-cream: #f2f1ed;
+  --color-cursor-orange: #f54e00;
+  --color-cursor-error: #cf2d56;
+  --color-cursor-success: #1f8a65;
+
+  /* Surface scale */
+  --color-surface-100: #f7f7f4;
+  --color-surface-200: #f2f1ed;
+  --color-surface-300: #ebeae5;
+  --color-surface-400: #e6e5e0;
+  --color-surface-500: #e1e0db;
+
+  /* Semantic tokens */
+  --color-background: #f2f1ed;
+  --color-foreground: #26251e;
+
+  /* Primary = warm cream CTA button */
+  --color-primary: #ebeae5;
+  --color-primary-foreground: #26251e;
+
+  --color-secondary: #e6e5e0;
+  --color-secondary-foreground: #26251e;
+
+  --color-muted: #ebeae5;
+  --color-muted-foreground: rgba(38, 37, 30, 0.55);
+
+  --color-accent: #e6e5e0;
+  --color-accent-foreground: #26251e;
+
+  /* Destructive = Cursor warm crimson (also used for hover text shifts) */
+  --color-destructive: #cf2d56;
+  --color-destructive-foreground: #f2f1ed;
+
+  --color-border: rgba(38, 37, 30, 0.1);
+  --color-border-medium: rgba(38, 37, 30, 0.2);
+  --color-border-strong: rgba(38, 37, 30, 0.55);
+
+  --color-input: rgba(38, 37, 30, 0.1);
+  --color-ring: rgba(38, 37, 30, 0.2);
+
+  /* Border radius scale */
+  --radius-micro: 1.5px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 9999px;
 }
 
 @layer base {
-  * {
-    border-color: hsl(var(--border));
+  *, *::before, *::after {
+    box-sizing: border-box;
   }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    line-height: 1.5;
   }
 }
