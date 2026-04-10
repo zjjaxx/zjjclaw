@@ -109,21 +109,8 @@ router.post('/chat', async (req: Request, res: Response) => {
       systemPrompts: [MARKET_ANALYSIS_SYSTEM],
     });
 
-    let fullText = '';
     for await (const chunk of stream) {
       res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-      if ((chunk as { type: string; delta?: string }).type === 'TEXT_MESSAGE_CONTENT') {
-        fullText += (chunk as { delta: string }).delta;
-      }
-    }
-
-    // 若 autoCreate:true，尝试从 AI 回复中解析小说创建参数并自动创建
-    if (body.autoCreate) {
-      const novelParams = extractJSON<CreateNovelRequest>(fullText);
-      if (novelParams?.title?.trim()) {
-        const meta = createNovel(novelParams);
-        sendSSE(res, 'novel_created', { success: true, data: meta });
-      }
     }
 
     res.write('data: [DONE]\n\n');
