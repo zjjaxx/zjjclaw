@@ -1,5 +1,5 @@
 {
-  "status": "running",
+  "status": "interrupted",
   "completedSteps": [
     "构建世界观",
     "设计力量体系",
@@ -12,11 +12,13 @@
     "写第2章",
     "更新第2章记忆",
     "写第3章",
-    "更新第3章记忆"
+    "更新第3章记忆",
+    "写第4章",
+    "更新第4章记忆"
   ],
-  "currentStep": "写第4章",
-  "failedStep": null,
-  "failedError": null,
+  "currentStep": null,
+  "failedStep": "写第5章",
+  "failedError": "已请求中断，当前步骤《写第5章》结束后将停止",
   "startedAt": "2026-04-09T16:04:40.754Z",
-  "updatedAt": "2026-04-09T16:24:36.159Z"
+  "updatedAt": "2026-04-10T06:43:56.479Z"
 }

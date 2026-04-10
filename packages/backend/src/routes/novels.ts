@@ -86,6 +86,23 @@ function buildGenerateStepStatuses(id: string, progress: PipelineProgress | null
   });
 }
 
+function getInterruptedProgress(id: string): PipelineProgress | null {
+  const latest = getGenerateProgress(id);
+  return latest?.status === 'interrupted' ? latest : null;
+}
+
+async function waitForInterruptOrTimeout(id: string, delayMs: number): Promise<boolean> {
+  const deadline = Date.now() + delayMs;
+
+  while (Date.now() < deadline) {
+    if (getInterruptedProgress(id)) return true;
+    const remaining = deadline - Date.now();
+    await new Promise((resolve) => setTimeout(resolve, Math.min(250, remaining)));
+  }
+
+  return !!getInterruptedProgress(id);
+}
+
 // ─── 市场分析聊天 ─────────────────────────────────────────────────────────────
 
 // POST /api/novels/chat — 基于 @tanstack/ai 的流式聊天，分析起点/番茄/七猫小说市场
@@ -260,7 +277,7 @@ ${body.prompt ? '额外要求：' + body.prompt : ''}`;
       const existingList = existingChars.map(c => `${c.name}（${c.role}）`).join('、');
       userMsg = `请为《${meta.title}》的"${arc?.name ?? `第${arcIdx + 1}弧`}"弧创建新角色。
 已有角色（不要重复创建）：${existingList}
-${arc?.newCharacterHints?.length ? '本弧角色需求：\n' + arc.newCharacterHints.map((h, i) => `${i + 1}. ${h}`).join('\n') : ''}
+${arc?.newCharacterHints?.length ? '本弧角色需求：\n' + arc.newCharacterHints.map((h, i) => `${i + 1}. ${h.name}（${h.role}）— ${h.narrativeFunction ?? ''}`).join('\n') : ''}
 ${arc ? '本弧剧情：' + arc.summary : ''}
 ${body.prompt ? '额外要求：' + body.prompt : ''}
 请输出 JSON 数组`;
@@ -315,8 +332,8 @@ router.post('/:id/outline', async (req: Request, res: Response) => {
 目标章节数：${meta.targetChapters}章
 ${(req.body as { prompt?: string }).prompt ? '额外要求：' + (req.body as { prompt?: string }).prompt : ''}
 
-JSON 结构：{ premise, goldenFinger, overallConflict, endingVision, arcs: [{name, chapterRange, summary, majorEvents, faceSlapTargets, realmBreakthrough, newCharacterHints}] }
-其中 newCharacterHints 是字符串数组，每弧 3-6 条，说明本弧需要新增什么类型的角色`;
+JSON 结构：{ premise, thematicQuestion, goldenFinger: {description, limitation, cost}, overallConflict, endingVision, arcs: [{name, chapterRange, summary, coreConflict, protagonistArc, majorEvents, keyTurningPoint, foreshadowing: {planted, harvested}, emotionalBeat, newCharacterHints}] }
+其中 newCharacterHints 是角色对象数组，每弧 3-6 个，每个包含 {name, role, age, appearance, personality, innerConflict, quirk, background, abilities, currentRealm, relationshipToProtagonist, narrativeFunction, hiddenSecret, firstAppearance}`;
 
     await streamToSSE(res, systemPrompt, userMsg, 6000, (text) => {
       const outline = extractJSON<Outline>(text);
@@ -354,11 +371,11 @@ router.post('/:id/chapters/plan', async (req: Request, res: Response) => {
     const systemPrompt = buildSystemPrompt('chapter-planner', context, meta.template);
 
     const userMsg = `请为《${meta.title}》规划第 ${fromChapter} 到第 ${fromChapter + count - 1} 章，共 ${count} 章。
-输出 JSON 数组，每章格式：{ chapterNumber, title, pov, location, summary, beats, faceSlapMoment, breakthroughMoment, romanceMoment, endingHook, wordTarget }
+输出 JSON 数组，每章格式：{ chapterNumber, title, pov, location, summary, beats, tensionType, characterArcs, foreshadowPlanted, foreshadowHarvested, endingHook, wordTarget }
 
 ${outline ? '当前故事弧：' + JSON.stringify(outline.arcs.find(a => fromChapter >= a.chapterRange[0] && fromChapter <= a.chapterRange[1])) : ''}
-${memory ? '主角当前境界：' + memory.protagonistState.realm : ''}
-${memory?.pendingFaceSlaps.length ? '待打脸对象：' + memory.pendingFaceSlaps.map(f => f.target).join('、') : ''}
+${memory ? '主角当前境界：' + (memory.protagonistState?.realm ?? '未知') : ''}
+${memory?.foreshadowing?.planted?.length ? '待回收伏笔：' + memory.foreshadowing.planted.map(f => f.seed).join('、') : ''}
 ${body.prompt ? '额外要求：' + body.prompt : ''}`;
 
     await streamToSSE(res, systemPrompt, userMsg, 4096, (text) => {
@@ -463,7 +480,21 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 5000;
 
+    const finishInterruptedRun = (): boolean => {
+      const interruptedProgress = getInterruptedProgress(meta.id);
+      if (!interruptedProgress) return false;
+
+      sendSSE(res, 'interrupted', {
+        step: interruptedProgress.failedStep,
+        message: interruptedProgress.failedError ?? '生成已中断',
+      });
+      res.end();
+      return true;
+    };
+
     for (const step of steps) {
+      if (finishInterruptedRun()) return;
+
       if (step.skip?.()) {
         sendSSE(res, 'skip', { step: step.name });
         progress.completedSteps = [...new Set([...progress.completedSteps, step.name])];
@@ -481,11 +512,15 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
 
       let succeeded = false;
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        if (finishInterruptedRun()) return;
+
         try {
           await step.run();
+          if (finishInterruptedRun()) return;
           succeeded = true;
           break;
         } catch (err) {
+          if (finishInterruptedRun()) return;
           console.error(`[generate] ${step.name} 第${attempt}次失败:`, err);
           if (attempt < MAX_RETRIES) {
             sendSSE(res, 'step_retry', {
@@ -495,7 +530,11 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
               error: String(err),
               message: `${step.name} 失败，${RETRY_DELAY_MS / 1000}秒后重试（${attempt}/${MAX_RETRIES}）`,
             });
-            await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+            const interrupted = await waitForInterruptOrTimeout(meta.id, RETRY_DELAY_MS);
+            if (interrupted) {
+              finishInterruptedRun();
+              return;
+            }
           } else {
             progress.status = 'failed';
             progress.failedStep = step.name;
@@ -512,6 +551,8 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
         res.end();
         return;
       }
+
+      if (finishInterruptedRun()) return;
 
       progress.completedSteps = [...new Set([...progress.completedSteps, step.name])];
       progress.currentStep = null;
@@ -541,6 +582,35 @@ router.post('/:id/generate', async (req: Request, res: Response) => {
       saveGenerateProgress(novelId, progress);
     }
     handleError(res, err, 'POST /generate');
+  }
+});
+
+router.post('/:id/generate/interrupt', (req: Request, res: Response) => {
+  try {
+    const meta = getMeta(req.params.id);
+    if (!meta) { res.status(404).json({ success: false, error: '小说不存在' }); return; }
+
+    const progress = getGenerateProgress(meta.id);
+    if (!progress || progress.status !== 'running') {
+      res.status(409).json({ success: false, error: '当前没有正在执行的生成任务' });
+      return;
+    }
+
+    progress.status = 'interrupted';
+    progress.failedStep = progress.currentStep;
+    progress.failedError = progress.currentStep
+      ? `已请求中断，当前步骤《${progress.currentStep}》结束后将停止`
+      : '已请求中断生成';
+    progress.currentStep = null;
+    progress.updatedAt = new Date().toISOString();
+    saveGenerateProgress(meta.id, progress);
+
+    res.json({
+      success: true,
+      data: progress,
+    });
+  } catch (err) {
+    handleError(res, err, 'POST /generate/interrupt');
   }
 });
 
@@ -614,8 +684,8 @@ router.get('/:id/status', (req: Request, res: Response) => {
       data: {
         ...meta,
         progress: `${meta.currentChapter}/${meta.targetChapters}章`,
-        protagonistRealm: memory?.protagonistState.realm ?? '未知',
-        pendingFaceSlaps: memory?.pendingFaceSlaps.length ?? 0,
+        protagonistRealm: memory?.protagonistState?.realm ?? '未知',
+        plantedForeshadowing: memory?.foreshadowing?.planted?.length ?? 0,
       },
     });
   } catch (err) {
@@ -647,26 +717,52 @@ async function updateMemoryAfterChapter(
 ): Promise<void> {
   const meta = getMeta(id);
   const oldMemory = getMemory(id);
-  if (!meta || !oldMemory) return;
+  if (!meta) return;
+
+  const plan = getChapterPlan(id, chapterN);
+  const outline = getOutline(id);
+  const characters = getCharacters(id);
+  const powerSystem = getPowerSystem(id);
 
   const systemPrompt = buildSystemPrompt('story-memory', '', meta.template);
-  const userMsg = `请根据第${chapterN}章内容，更新故事记忆状态，输出完整 JSON。
+  const userMsg = `请根据第${chapterN}章内容，更新故事记忆状态，输出完整 JSON（必须包含所有字段）。
+
+你将得到：上一版记忆（如有）、本章正文、本章计划（如有）、故事大纲（如有）、核心角色卡（如有）、力量体系（如有）。
+请严格把“推测”与“事实”分开写；不要凭空编造未出现的新人物/新势力/新能力。
 
 当前记忆：
 ${JSON.stringify(oldMemory, null, 2)}
+
+本章计划（如有）：
+${plan ? JSON.stringify(plan, null, 2) : 'null'}
+
+故事大纲（如有）：
+${outline ? JSON.stringify(outline, null, 2) : 'null'}
+
+核心角色（如有）：
+${characters?.length ? JSON.stringify(characters, null, 2) : '[]'}
+
+力量体系（如有）：
+${powerSystem ? powerSystem : ''}
 
 第${chapterN}章内容：
 ${chapterText}
 
 请更新并输出完整的 StoryMemory JSON（包含所有字段）。`;
 
-  const result = await callClaude(systemPrompt, userMsg, 8000,undefined,{type: 'json_object'});
+  const result = await callClaude(systemPrompt, userMsg, 8000, undefined, { type: 'json_object' });
   const newMemory = extractJSON<StoryMemory>(result);
-  if (newMemory) {
-    newMemory.lastUpdatedChapter = chapterN;
-    saveMemory(id, newMemory);
-    console.log(`[memory] 已更新第${chapterN}章记忆`);
+  if (!newMemory) return;
+
+  // 最小结构兜底：缺关键字段则不覆盖旧记忆
+  if (!newMemory.protagonistState || !newMemory.chapterContext || !newMemory.foreshadowing) {
+    console.warn(`[memory] 第${chapterN}章记忆结构不完整，已跳过保存`);
+    return;
   }
+
+  newMemory.lastUpdatedChapter = chapterN;
+  saveMemory(id, newMemory);
+  console.log(`[memory] 已更新第${chapterN}章记忆`);
 }
 
 // ─── 内部：全自动写作流水线 ────────────────────────────────────────────────
@@ -708,43 +804,21 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
           if (!outline?.arcs[arcIndex]) return true;
           const hints = outline.arcs[arcIndex].newCharacterHints;
           if (!hints || hints.length === 0) return true;
-          // 如果该弧已经补充过角色（通过检查是否有 firstAppearance 在该弧范围内的非核心角色）
-          const chars = getCharacters(id);
-          const [arcStart, arcEnd] = arcRanges[arcIndex];
-          const hasArcChars = chars.some(
-            c => c.firstAppearance && c.firstAppearance >= arcStart && c.firstAppearance <= arcEnd
-              && (c.role === 'antagonist' || c.role === 'cannon_fodder'),
-          );
-          return hasArcChars;
+          return false
         },
         run: async () => {
           const outline = getOutline(id);
           const arc = outline?.arcs[arcIndex];
           if (!arc?.newCharacterHints?.length) return;
-          const existingChars = getCharacters(id);
-          const existingList = existingChars.map(c => `${c.name}（${c.role}）`).join('、');
-          const text = await callClaude(
-            buildSystemPrompt('arc-character-creator', buildGeneralContext(id), meta.template),
-            `请为《${meta.title}》的"${arc.name}"弧（第${arc.chapterRange[0]}-${arc.chapterRange[1]}章）创建新角色。
-
-已有角色（不要重复创建）：${existingList}
-
-本弧角色需求提示：
-${arc.newCharacterHints.map((h, i) => `${i + 1}. ${h}`).join('\n')}
-
-本弧核心剧情：${arc.summary}
-本弧打脸对象：${arc.faceSlapTargets.join('、')}
-
-请创建 3-6 个新角色，输出 JSON 数组`,
-            8000,
-            undefined,
-            {type: 'json_object'},
-          );
-          const chars = extractJSON<Character[]>(text);
-          if (chars && Array.isArray(chars)) {
-            appendCharacters(id, chars);
-            console.log(`[arc-chars] 第${arcNum}弧补充了 ${chars.length} 个角色`);
+          const existingNames = new Set(getCharacters(id).map(c => c.name));
+          const newChars = arc.newCharacterHints.filter(c => !existingNames.has(c.name));
+          if (newChars.length > 0) {
+            appendCharacters(id, newChars);
+            console.log(`[arc-chars] 第${arcNum}弧补充了 ${newChars.length} 个角色`);
           }
+          // 角色已提取到 characters，清空大纲中的 hints 避免重复
+          arc.newCharacterHints = [];
+          saveOutline(id, outline!);
         },
       });
     }
@@ -839,7 +913,7 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
         const text = await callClaude(
           buildSystemPrompt('world-builder', '', meta.template),
           `请为《${meta.title}》（背景：${meta.setting}，金手指：${meta.cheatType}）构建世界观设定`,
-          4096,
+          10000,
         );
         saveWorld(id, text);
         meta.status = 'world-built';
@@ -853,7 +927,7 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
         const text = await callClaude(
           buildSystemPrompt('power-system-designer', `### 世界观\n${getWorld(id)}`, meta.template),
           `请为《${meta.title}》设计力量/修炼体系，金手指：${meta.cheatType}`,
-          8000,
+          10000,
         );
         savePowerSystem(id, text);
         meta.status = 'power-system-designed';
@@ -868,8 +942,8 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
       run: async () => {
         const text = await callClaude(
           buildSystemPrompt('core-character-creator', buildGeneralContext(id), meta.template),
-          `请为《${meta.title}》创建核心人物（主角、核心女主、大Boss、关键配角），共 5-7 个角色，输出 JSON 数组`,
-          8000,
+          `请为《${meta.title}》创建核心人物，输出 JSON 数组`,
+          10000,
           undefined,
           {type: 'json_object'},
         );
@@ -893,7 +967,7 @@ function buildGenerationPipeline(id: string): PipelineStep[] {
           .join('；');
         const text = await callClaude(
           buildSystemPrompt('plot-architect', buildGeneralContext(id), meta.template),
-          `请为《${meta.title}》生成故事大纲，总章节数：${meta.targetChapters}章，弧线章节范围：${arcHint}。每弧必须包含 newCharacterHints 字段（3-6条角色提示，说明本弧需要新增什么角色），输出 JSON`,
+          `请为《${meta.title}》生成故事大纲，总章节数：${meta.targetChapters}章，弧线章节范围：${arcHint}。每弧必须包含 newCharacterHints 字段（3-6个角色对象，每个包含 name/role/age/appearance/personality/innerConflict/quirk/background/abilities/currentRealm/relationshipToProtagonist/narrativeFunction/hiddenSecret/firstAppearance），输出 JSON`,
           30000,
           undefined,
           {type: 'json_object'},

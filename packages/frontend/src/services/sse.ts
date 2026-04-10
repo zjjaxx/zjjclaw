@@ -54,6 +54,7 @@ export type GenerateEvent =
   | { event: 'step_retry'; data: { step: string; attempt: number; maxRetries: number; error: string; message: string } }
   | { event: 'step_error'; data: { step: string; error: string; message: string } }
   | { event: 'skip'; data: { step: string } }
+  | { event: 'interrupted'; data: { step: string | null; message: string } }
   | { event: 'done'; data: { message: string } }
   | { event: 'error'; data: { message: string } }
 

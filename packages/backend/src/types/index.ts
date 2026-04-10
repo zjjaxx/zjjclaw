@@ -54,32 +54,50 @@ export interface Character {
   age?: number;
   appearance: string;
   personality: string;
+  innerConflict?: string;       // 内心矛盾/未解决的心结
+  quirk?: string;               // 口癖/怪癖/标志性行为
   background: string;
   abilities?: string;
-  currentRealm?: string;      // 当前境界
+  currentRealm?: string;        // 当前境界
   relationshipToProtagonist?: string;
-  faceSlapped?: boolean;      // 是否已被打脸
-  firstAppearance?: number;   // 首次出现章节
+  narrativeFunction?: string;   // 叙事功能（搞笑担当/中二担当/情感锚点等）
+  hiddenSecret?: string;        // 其他角色不知道的秘密
+  firstAppearance?: number;     // 首次出现章节
 }
 
 // ─── 大纲 ────────────────────────────────────────────────────────────────────
+
+export interface Foreshadowing {
+  planted: string[];           // 本弧埋入的伏笔
+  harvested: string[];         // 本弧回收的之前伏笔
+}
 
 export interface PlotArc {
   name: string;
   chapterRange: [number, number];
   summary: string;
+  coreConflict: string;        // 本弧的核心矛盾/困局
+  protagonistArc: string;      // 主角在本弧的内在变化
   majorEvents: string[];
-  faceSlapTargets: string[];   // 本弧需要打脸的对象
-  realmBreakthrough?: string; // 本弧主角突破的境界
-  newCharacterHints?: string[]; // 本弧需要新增的角色提示（由 plot-architect 产出）
+  keyTurningPoint: string;     // 本弧最大的转折点
+  foreshadowing: Foreshadowing;
+  emotionalBeat: string;       // 本弧的情感高潮场景
+  newCharacterHints?: Character[];
+}
+
+export interface GoldenFinger {
+  description: string;         // 金手指/异能详细说明
+  limitation: string;          // 限制条件
+  cost: string;                // 使用代价或获得代价
 }
 
 export interface Outline {
   premise: string;
-  goldenFinger: string;        // 金手指详细说明
+  thematicQuestion: string;    // 故事探讨的核心问题
+  goldenFinger: GoldenFinger;
   arcs: PlotArc[];
-  overallConflict: string;     // 主线矛盾
-  endingVision: string;        // 结局愿景
+  overallConflict: string;     // 主线矛盾（含价值观碰撞）
+  endingVision: string;        // 结局愿景（意料之外情理之中）
 }
 
 // ─── 章节计划 ────────────────────────────────────────────────────────────────
@@ -87,24 +105,19 @@ export interface Outline {
 export interface ChapterPlan {
   chapterNumber: number;
   title: string;
-  pov: string;                 // 视角人物（通常主角）
+  pov: string;                 // 主视角角色名
   location: string;            // 场景地点
-  summary: string;
-  beats: string[];             // 情节节拍（分步骤）
-  faceSlapMoment?: string;     // 打脸情节（如有）
-  breakthroughMoment?: string; // 突破情节（如有）
-  romanceMoment?: string;      // 感情线推进（如有）
-  endingHook: string;          // 结尾悬念钩子
+  summary: string;             // 一句话概括（包含核心矛盾或变化）
+  beats: string[];             // 情节节拍（3-5个，标注类型如"铺垫：""碰撞："等）
+  tensionType: string;         // 张力类型：困局反转|认知颠覆|关系深化|势力博弈|成长蜕变|日常暗涌
+  characterArcs: Record<string, string>; // 角色名 → 本章内在变化（一句话）
+  foreshadowPlanted: string | null;      // 本章埋入的伏笔（如无则null）
+  foreshadowHarvested: string | null;    // 本章回收的伏笔（引用来源章节，如无则null）
+  endingHook: string;          // 最后一句话/镜头（50字以内，具体可写）
   wordTarget: number;
 }
 
 // ─── 故事记忆 ────────────────────────────────────────────────────────────────
-
-export interface PendingFaceSlap {
-  target: string;
-  offense: string;             // 做了什么事/说了什么话
-  offenseChapter: number;
-}
 
 export interface PlotThread {
   thread: string;
@@ -112,22 +125,137 @@ export interface PlotThread {
   hintChapter?: number;
 }
 
+export interface ForeshadowingThread {
+  content: string;             // 伏笔内容
+  plantedChapter: number;      // 埋入章节
+  status: 'planted' | 'harvested';
+  harvestedChapter?: number;   // 回收章节
+}
+
 export interface StoryMemory {
   lastUpdatedChapter: number;
-  protagonistState: {
-    realm: string;             // 当前境界
-    abilities: string[];       // 已掌握能力
-    currentGoal: string;       // 当前目标
-    location: string;          // 当前位置
-    relationships: Record<string, string>; // 与各人物关系状态
+  chapterContext: {
+    title: string;
+    pov: string;
+    primaryLocation: string;
+    timeAnchor: string;
   };
-  activeConflicts: string[];
-  pendingFaceSlaps: PendingFaceSlap[];
-  resolvedFaceSlaps: Array<{ target: string; resolvedChapter: number }>;
-  plotThreads: PlotThread[];
-  romanceProgress: Array<{ character: string; stage: string }>;
-  recentEvents: string[];      // 最近3-5章的关键事件摘要
-  foreshadowing: string[];     // 已埋下的伏笔
+  continuity: {
+    facts: string[];
+    openConstraints: string[];
+  };
+  protagonistState: {
+    name: string;
+    realm: string;
+    abilities: Array<{
+      name: string;
+      levelOrMastery: string;
+      limitation: string;
+      costOrSideEffect: string;
+    }>;
+    resources: {
+      cash: string;
+      items: string[];
+      intel: string[];
+      debts: string[];
+    };
+    injuriesAndSideEffects: Array<{
+      description: string;
+      sinceChapter: number;
+      status: 'new' | 'ongoing' | 'resolved';
+      impact: string;
+    }>;
+    currentIntent: string;
+  };
+  characterStates: Array<{
+    name: string;
+    role: 'protagonist' | 'female_lead' | 'antagonist' | 'supporting';
+    currentStance: string;
+    recentChange: string;
+    knownSecrets: string[];
+    unknownToProtagonist: string[];
+  }>;
+  relationships: {
+    edges: Array<{
+      from: string;
+      to: string;
+      type:
+        | 'trust'
+        | 'distrust'
+        | 'debt'
+        | 'leverage'
+        | 'alliance'
+        | 'rivalry'
+        | 'affection'
+        | 'suspicion';
+      status: 'strengthened' | 'weakened' | 'new' | 'unchanged';
+      evidenceChapter: number;
+      note: string;
+    }>;
+  };
+  factions: Array<{
+    name: string;
+    alignmentToProtagonist: 'friendly' | 'neutral' | 'hostile';
+    currentGoal: string;
+    pressureOrThreat: string;
+  }>;
+  debtsAndLeverage: Array<{
+    holder: string;
+    target: string;
+    what: string;
+    createdOrUpdatedChapter: number;
+    canBeCashedInAs: string;
+  }>;
+  activeConflicts: Array<{
+    conflict: string;
+    sides: string[];
+    stakes: string;
+    timer: string;
+  }>;
+  plotThreads: Array<{
+    thread: string;
+    status: 'active' | 'pending' | 'resolved';
+    introducedChapter: number;
+    lastProgressChapter: number;
+    currentState: string;
+    nextLikelyStep: string;
+  }>;
+  choicesAndCosts: Array<{
+    choice: string;
+    cost: string;
+    consequence: string;
+  }>;
+  informationLedger: {
+    revealed: Array<{
+      info: string;
+      scope: 'world' | 'faction' | 'character' | 'goldenFinger';
+      whoKnows: string[];
+    }>;
+    hidden: Array<{
+      gap: string;
+      whyItMatters: string;
+    }>;
+    implied: Array<{
+      hint: string;
+      evidence: string;
+    }>;
+  };
+  foreshadowing: {
+    planted: Array<{
+      seed: string;
+      chapter: number;
+      type: 'dialogue' | 'object' | 'behavior' | 'information';
+      horizon: 'in_arc' | 'cross_arc' | 'global';
+    }>;
+    harvested: Array<{
+      seed: string;
+      plantedChapter: number;
+      harvestChapter: number;
+      payoff: string;
+    }>;
+  };
+  unansweredQuestions: string[];
+  recentEvents: string[];
 }
 
 // ─── Skill 系统 ───────────────────────────────────────────────────────────────

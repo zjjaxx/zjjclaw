@@ -24,10 +24,11 @@ type LogEntry =
   | { kind: 'skip'; step: string }
   | { kind: 'step_retry'; step: string; attempt: number; maxRetries: number; message: string }
   | { kind: 'step_error'; step: string; message: string }
+  | { kind: 'interrupted'; message: string }
   | { kind: 'done'; message: string }
   | { kind: 'error'; message: string }
 
-type Status = 'idle' | 'running' | 'done' | 'error'
+type Status = 'idle' | 'running' | 'done' | 'error' | 'interrupted'
 
 function GeneratePage() {
   const { id } = Route.useParams()
@@ -59,6 +60,7 @@ function GeneratePage() {
   const [status, setStatus] = useState<Status>('idle')
   const [currentStep, setCurrentStep] = useState<string | null>(null)
   const [isCheckingStatus, setIsCheckingStatus] = useState(false)
+  const [isInterrupting, setIsInterrupting] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const logEndRef = useRef<HTMLDivElement>(null)
   const hasBootstrapped = useRef(false)
@@ -141,6 +143,12 @@ function GeneratePage() {
                 pushLog({ kind: 'step_error', step: ev.data.step, message: ev.data.message })
                 void refreshGenerateState()
                 break
+              case 'interrupted':
+                setCurrentStep(null)
+                setStatus('interrupted')
+                pushLog({ kind: 'interrupted', message: ev.data.message })
+                void refreshGenerateState()
+                break
               case 'done':
                 setCurrentStep(null)
                 setStatus('done')
@@ -183,6 +191,25 @@ function GeneratePage() {
     }
   }
 
+  async function interruptGenerate() {
+    if (isInterrupting) return
+
+    setIsInterrupting(true)
+    setCurrentStep('正在请求中断...')
+
+    try {
+      const result = await novelsApi.interruptGenerate(id)
+      pushLog({ kind: 'interrupted', message: result.data.failedError ?? '已发送中断请求，当前步骤结束后将停止。' })
+      await refreshGenerateState()
+    } catch (error) {
+      setCurrentStep(generateStatusQuery.data?.data.currentStep ?? null)
+      pushLog({ kind: 'error', message: String(error) })
+      await refreshGenerateState()
+    } finally {
+      setIsInterrupting(false)
+    }
+  }
+
   useEffect(() => {
     const latestStatus = generateStatusQuery.data?.data
     if (!latestStatus) return
@@ -190,7 +217,7 @@ function GeneratePage() {
     if (
       status === 'running' &&
       (isCheckingStatus || abortRef.current) &&
-      (latestStatus.status === 'idle' || latestStatus.status === 'interrupted')
+      latestStatus.status === 'idle'
     ) {
       return
     }
@@ -206,7 +233,7 @@ function GeneratePage() {
       return
     }
     if (latestStatus.status === 'failed' || latestStatus.status === 'interrupted') {
-      setStatus('error')
+      setStatus(latestStatus.status === 'interrupted' ? 'interrupted' : 'error')
       return
     }
     setStatus('idle')
@@ -238,6 +265,8 @@ function GeneratePage() {
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [log])
+
+  const canInterrupt = remoteStatus === 'running' || status === 'running'
 
   return (
     <div className="p-10 max-w-5xl mx-auto">
@@ -283,6 +312,14 @@ function GeneratePage() {
               </span>
             </>
           )}
+          {status === 'interrupted' && (
+            <>
+              <AlertTriangle size={14} style={{ color: '#c08532' }} />
+              <span className="font-sans text-sm text-foreground">
+                {generateStatusQuery.data?.data.failedError ?? '生成已中断'}
+              </span>
+            </>
+          )}
           {status === 'idle' && (
             <>
               <Clock3 size={14} style={{ color: 'var(--color-muted-foreground)' }} />
@@ -301,36 +338,34 @@ function GeneratePage() {
               查看小说
             </button>
           )}
-          {status !== 'running' && (
+          {!canInterrupt && (
             <button
               onClick={() => void startGenerate(false)}
-              disabled={isCheckingStatus}
+              disabled={isCheckingStatus || isInterrupting}
               className="px-3 py-1.5 rounded-lg text-sm font-sans transition-colors duration-150 hover:text-destructive disabled:opacity-50"
               style={{ backgroundColor: 'var(--color-surface-400)' }}
             >
               {isCheckingStatus ? '检查中...' : '继续生成'}
             </button>
           )}
-          {status !== 'running' && (
+          {!canInterrupt && (
             <button
               onClick={() => void startGenerate(true)}
-              disabled={isCheckingStatus}
+              disabled={isCheckingStatus || isInterrupting}
               className="px-3 py-1.5 rounded-lg text-sm font-sans transition-colors duration-150 hover:text-destructive disabled:opacity-50"
               style={{ backgroundColor: 'var(--color-surface-400)' }}
             >
               从头重新生成
             </button>
           )}
-          {status === 'running' && abortRef.current && (
+          {canInterrupt && (
             <button
-              onClick={() => {
-                abortRef.current?.abort()
-                abortRef.current = null
-              }}
-              className="px-3 py-1.5 rounded-lg text-sm font-sans transition-colors duration-150 hover:text-destructive"
+              onClick={() => void interruptGenerate()}
+              disabled={isInterrupting}
+              className="px-3 py-1.5 rounded-lg text-sm font-sans transition-colors duration-150 hover:text-destructive disabled:opacity-50"
               style={{ backgroundColor: 'var(--color-surface-400)' }}
             >
-              停止跟随
+              {isInterrupting ? '请求中断中...' : '中断生成'}
             </button>
           )}
         </div>
@@ -498,6 +533,13 @@ function LogLine({ entry }: { entry: LogEntry }) {
       return (
         <div className="flex items-start gap-2 py-0.5" style={{ color: 'var(--color-destructive)' }}>
           <XCircle size={11} className="mt-0.5 shrink-0" />
+          <span>{entry.message}</span>
+        </div>
+      )
+    case 'interrupted':
+      return (
+        <div className="mt-3 flex items-start gap-2 font-sans text-sm font-medium" style={{ color: '#c08532' }}>
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
           <span>{entry.message}</span>
         </div>
       )

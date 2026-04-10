@@ -81,20 +81,35 @@ export function createNovel(req: CreateNovelRequest): NovelMeta {
   // 初始化空的故事记忆
   const initMemory: StoryMemory = {
     lastUpdatedChapter: 0,
+    chapterContext: {
+      title: '未开始',
+      pov: meta.protagonist,
+      primaryLocation: meta.setting,
+      timeAnchor: '',
+    },
+    continuity: {
+      facts: [],
+      openConstraints: [],
+    },
     protagonistState: {
+      name: meta.protagonist,
       realm: '普通人',
       abilities: [],
-      currentGoal: '未知',
-      location: meta.setting,
-      relationships: {},
+      resources: { cash: '', items: [], intel: [], debts: [] },
+      injuriesAndSideEffects: [],
+      currentIntent: '',
     },
+    characterStates: [],
+    relationships: { edges: [] },
+    factions: [],
+    debtsAndLeverage: [],
     activeConflicts: [],
-    pendingFaceSlaps: [],
-    resolvedFaceSlaps: [],
     plotThreads: [],
-    romanceProgress: [],
+    choicesAndCosts: [],
+    informationLedger: { revealed: [], hidden: [], implied: [] },
+    foreshadowing: { planted: [], harvested: [] },
+    unansweredQuestions: [],
     recentEvents: [],
-    foreshadowing: [],
   };
   saveMemory(id, initMemory);
 
@@ -268,26 +283,22 @@ export function getPrevChaptersSummary(id: string, currentN: number, take = 3): 
 export function formatMemory(memory: StoryMemory): string {
   if (!memory) return '';
 
+  const protagonistAbilities = (memory.protagonistState.abilities ?? []).map(a => a.name).filter(Boolean);
+  const plantedSeeds = (memory.foreshadowing?.planted ?? []).map(f => f.seed).filter(Boolean);
+  const conflicts = (memory.activeConflicts ?? []).map(c => c.conflict).filter(Boolean);
+
   const lines: string[] = [
     `**主角当前状态**`,
-    `- 境界：${memory.protagonistState.realm}`,
-    `- 能力：${memory.protagonistState.abilities.join('、') || '无'}`,
-    `- 当前目标：${memory.protagonistState.currentGoal}`,
-    `- 位置：${memory.protagonistState.location}`,
+    `- 境界：${memory.protagonistState?.realm ?? '未知'}`,
+    `- 能力：${protagonistAbilities.join('、') || '无'}`,
+    `- 近期意图：${memory.protagonistState?.currentIntent || '未知'}`,
+    `- 位置：${memory.chapterContext?.primaryLocation || '未知'}`,
     '',
     `**活跃冲突**`,
-    ...memory.activeConflicts.map(c => `- ${c}`),
+    ...(conflicts.length > 0 ? conflicts.map(c => `- ${c}`) : ['- 无']),
     '',
-    `**待打脸对象**`,
-    ...memory.pendingFaceSlaps.map(
-      f => `- ${f.target}（第${f.offenseChapter}章：${f.offense}）`,
-    ),
-    '',
-    `**未解伏笔**`,
-    ...memory.foreshadowing.map(f => `- ${f}`),
-    '',
-    `**感情线进度**`,
-    ...memory.romanceProgress.map(r => `- ${r.character}：${r.stage}`),
+    `**未回收伏笔**`,
+    ...(plantedSeeds.length > 0 ? plantedSeeds.map(s => `- ${s}`) : ['- 无']),
     '',
     `**近期事件**`,
     ...memory.recentEvents.map(e => `- ${e}`),
@@ -331,13 +342,26 @@ export function buildChapterContext(id: string, chapterN: number): string {
   }
 
   if (characters.length > 0) {
-    parts.push(`### 主要人物`);
-    for (const c of characters) {
-      parts.push(
-        `**${c.name}**（${c.role}）：${c.personality}。${c.abilities ? '能力：' + c.abilities : ''}${c.currentRealm ? '，境界：' + c.currentRealm : ''}`,
-      );
-    }
-    parts.push('');
+    parts.push(
+      `### 已有人物`,
+      ...characters.map(c => {
+        const lines = [`**${c.name}**（${c.role}）`];
+        if (c.age) lines.push(`  年龄：${c.age}`);
+        if (c.appearance) lines.push(`  外貌：${c.appearance}`);
+        if (c.personality) lines.push(`  性格：${c.personality}`);
+        if (c.innerConflict) lines.push(`  内心矛盾：${c.innerConflict}`);
+        if (c.quirk) lines.push(`  记忆点：${c.quirk}`);
+        if (c.background) lines.push(`  背景：${c.background}`);
+        if (c.abilities) lines.push(`  能力：${c.abilities}`);
+        if (c.currentRealm) lines.push(`  境界：${c.currentRealm}`);
+        if (c.relationshipToProtagonist) lines.push(`  与主角关系：${c.relationshipToProtagonist}`);
+        if (c.narrativeFunction) lines.push(`  叙事功能：${c.narrativeFunction}`);
+        if (c.hiddenSecret) lines.push(`  隐藏秘密：${c.hiddenSecret}`);
+        if (c.firstAppearance) lines.push(`  首次出现：第${c.firstAppearance}章`);
+        return lines.join('\n');
+      }),
+      '',
+    );
   }
 
   if (outline) {
@@ -359,17 +383,21 @@ export function buildChapterContext(id: string, chapterN: number): string {
   }
 
   if (prevSummary) {
-    parts.push(`### 前几章摘要`, prevSummary, '');
+    parts.push(`### 前几章内容`, prevSummary, '');
   }
 
   if (plan) {
     parts.push(
       `### 本章计划（第${chapterN}章：${plan.title}）`,
+      `**视角**：${plan.pov}`,
+      `**地点**：${plan.location}`,
       `**摘要**：${plan.summary}`,
+      `**张力类型**：${plan.tensionType}`,
       `**情节节拍**：`,
       ...plan.beats.map((b, i) => `${i + 1}. ${b}`),
-      plan.faceSlapMoment ? `**打脸情节**：${plan.faceSlapMoment}` : '',
-      plan.breakthroughMoment ? `**突破情节**：${plan.breakthroughMoment}` : '',
+      `**角色弧光**：${Object.entries(plan.characterArcs).map(([k, v]) => `${k}：${v}`).join('；')}`,
+      plan.foreshadowPlanted ? `**本章伏笔**：${plan.foreshadowPlanted}` : '',
+      plan.foreshadowHarvested ? `**回收伏笔**：${plan.foreshadowHarvested}` : '',
       `**结尾钩子**：${plan.endingHook}`,
       `**目标字数**：约 ${plan.wordTarget} 字`,
       '',
@@ -404,7 +432,22 @@ export function buildGeneralContext(id: string): string {
   if (characters.length > 0) {
     parts.push(
       `### 已有人物`,
-      ...characters.map(c => `- ${c.name}（${c.role}）：${c.personality}`),
+      ...characters.map(c => {
+        const lines = [`**${c.name}**（${c.role}）`];
+        if (c.age) lines.push(`  年龄：${c.age}`);
+        if (c.appearance) lines.push(`  外貌：${c.appearance}`);
+        if (c.personality) lines.push(`  性格：${c.personality}`);
+        if (c.innerConflict) lines.push(`  内心矛盾：${c.innerConflict}`);
+        if (c.quirk) lines.push(`  记忆点：${c.quirk}`);
+        if (c.background) lines.push(`  背景：${c.background}`);
+        if (c.abilities) lines.push(`  能力：${c.abilities}`);
+        if (c.currentRealm) lines.push(`  境界：${c.currentRealm}`);
+        if (c.relationshipToProtagonist) lines.push(`  与主角关系：${c.relationshipToProtagonist}`);
+        if (c.narrativeFunction) lines.push(`  叙事功能：${c.narrativeFunction}`);
+        if (c.hiddenSecret) lines.push(`  隐藏秘密：${c.hiddenSecret}`);
+        if (c.firstAppearance) lines.push(`  首次出现：第${c.firstAppearance}章`);
+        return lines.join('\n');
+      }),
       '',
     );
   }

@@ -57,6 +57,8 @@ export const novelsApi = {
   list: () => apiFetch<{ data: Novel[] }>('/novels'),
   get: (id: string) => apiFetch<{ data: NovelDetail }>(`/novels/${id}`),
   getGenerateStatus: (id: string) => apiFetch<{ data: GenerateStatus }>(`/novels/${id}/generate/status`),
+  interruptGenerate: (id: string) =>
+    apiFetch<{ data: GenerateStatus }>(`/novels/${id}/generate/interrupt`, { method: 'POST' }),
   create: (body: { title: string; template: string; premise?: string }) =>
     apiFetch<Novel>('/novels', { method: 'POST', body: JSON.stringify(body) }),
   exportUrl: (id: string) => `${BASE_URL}/novels/${id}/export`,
