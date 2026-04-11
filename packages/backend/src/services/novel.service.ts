@@ -143,6 +143,19 @@ export function listNovels(): NovelMeta[] {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+/** 删除整个小说目录；id 必须落在 data/novels 下，防止路径穿越 */
+export function deleteNovel(id: string): boolean {
+  const dir = novelDir(id);
+  const resolvedDir = path.resolve(dir);
+  const resolvedData = path.resolve(DATA_DIR);
+  if (resolvedDir !== resolvedData && !resolvedDir.startsWith(`${resolvedData}${path.sep}`)) {
+    return false;
+  }
+  if (!getMeta(id)) return false;
+  fs.rmSync(dir, { recursive: true, force: true });
+  return true;
+}
+
 // ─── 世界观 ───────────────────────────────────────────────────────────────────
 
 export function getWorld(id: string): string {

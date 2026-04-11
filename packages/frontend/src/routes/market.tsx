@@ -45,7 +45,7 @@ function parseProposals(content: string): NovelProposal[] | null {
   }
 }
 
-const INITIAL_PROMPT = '请分析起点、番茄、七猫等平台当前最热门的小说类型，为我推荐 3-5 个最具市场潜力的小说题材方案，并输出 JSON。'
+const INITIAL_PROMPT = '请分析起点、番茄、七猫等平台当前最热门的小说类型，为我推荐 5 个最具市场潜力的小说题材方案，并输出 JSON。'
 
 function MarketPage() {
   const [messages, setMessages] = useState<Message[]>([])

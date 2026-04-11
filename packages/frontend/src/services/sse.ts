@@ -145,7 +145,6 @@ export function streamMarketChat(
     },
     onclose() {
       handlers.onDone?.()
-      throw new Error('stream closed')
     },
     onerror(err) {
       handlers.onError?.(err)

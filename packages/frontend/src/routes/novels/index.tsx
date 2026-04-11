@@ -1,7 +1,8 @@
+import type { MouseEvent } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { novelsApi, type Novel } from '@/services/api'
-import { Plus, BookOpen, Clock } from 'lucide-react'
+import { Plus, BookOpen, Clock, Trash2 } from 'lucide-react'
 
 export const Route = createFileRoute('/novels/')({
   component: NovelsPage,
@@ -14,9 +15,16 @@ const TEMPLATE_LABELS: Record<string, string> = {
 }
 
 function NovelsPage() {
+  const queryClient = useQueryClient()
   const { data: novelsData, isLoading, error } = useQuery({
     queryKey: ['novels'],
     queryFn: novelsApi.list,
+  })
+  const deleteMutation = useMutation({
+    mutationFn: novelsApi.remove,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['novels'] })
+    },
   })
   const novels = novelsData?.data ?? []
   return (
@@ -85,7 +93,12 @@ function NovelsPage() {
       {novels && novels.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {novels.map((novel) => (
-            <NovelCard key={novel.id} novel={novel} />
+            <NovelCard
+              key={novel.id}
+              novel={novel}
+              onDelete={() => deleteMutation.mutate(novel.id)}
+              deleting={deleteMutation.isPending && deleteMutation.variables === novel.id}
+            />
           ))}
         </div>
       )}
@@ -93,33 +106,69 @@ function NovelsPage() {
   )
 }
 
-function NovelCard({ novel }: { novel: Novel }) {
+function NovelCard({
+  novel,
+  onDelete,
+  deleting,
+}: {
+  novel: Novel
+  onDelete: () => void
+  deleting: boolean
+}) {
+  const handleDelete = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (
+      !window.confirm(
+        `确定删除「${novel.title}」？本地章节与设定将一并删除，且不可恢复。`,
+      )
+    ) {
+      return
+    }
+    onDelete()
+  }
+
   return (
-    <Link
-      to="/novels/$id"
-      params={{ id: novel.id }}
-      className="group flex flex-col p-5 rounded-lg border bg-surface-300 hover:bg-surface-400
+    <div
+      className="group relative flex flex-col rounded-lg border bg-surface-300 hover:bg-surface-400
         transition-colors duration-150"
     >
-      <h3
-        className="font-sans font-medium text-sm tracking-[-0.01em] text-foreground mb-1 line-clamp-2
-          group-hover:text-destructive transition-colors duration-150"
+      <Link
+        to="/novels/$id"
+        params={{ id: novel.id }}
+        className="flex flex-col p-5 flex-1 min-w-0"
       >
-        {novel.title}
-      </h3>
-      <p
-        className="text-xs font-sans rounded-full inline-block px-2 py-0.5 mb-3 w-fit"
-        style={{
-          backgroundColor: 'var(--color-surface-500)',
-          color: 'var(--color-muted-foreground)',
-        }}
+        <h3
+          className="font-sans font-medium text-sm tracking-[-0.01em] text-foreground mb-1 line-clamp-2 pr-8
+            group-hover:text-destructive transition-colors duration-150"
+        >
+          {novel.title}
+        </h3>
+        <p
+          className="text-xs font-sans rounded-full inline-block px-2 py-0.5 mb-3 w-fit"
+          style={{
+            backgroundColor: 'var(--color-surface-500)',
+            color: 'var(--color-muted-foreground)',
+          }}
+        >
+          {TEMPLATE_LABELS[novel.template] ?? novel.template}
+        </p>
+        <div className="mt-auto flex items-center gap-1 text-xs text-muted-foreground font-sans">
+          <Clock size={11} />
+          <span>{new Date(novel.updatedAt ?? novel.createdAt).toLocaleDateString('zh-CN')}</span>
+        </div>
+      </Link>
+      <button
+        type="button"
+        title="删除项目"
+        disabled={deleting}
+        onClick={handleDelete}
+        className="absolute top-3 right-3 p-1.5 rounded-md border border-transparent
+          text-muted-foreground hover:text-destructive hover:border-border-medium hover:bg-surface-500
+          transition-colors duration-150 disabled:opacity-40"
       >
-        {TEMPLATE_LABELS[novel.template] ?? novel.template}
-      </p>
-      <div className="mt-auto flex items-center gap-1 text-xs text-muted-foreground font-sans">
-        <Clock size={11} />
-        <span>{new Date(novel.updatedAt ?? novel.createdAt).toLocaleDateString('zh-CN')}</span>
-      </div>
-    </Link>
+        <Trash2 size={15} aria-hidden />
+      </button>
+    </div>
   )
 }

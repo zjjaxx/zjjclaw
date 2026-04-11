@@ -18,6 +18,7 @@ import {
   getWorld,
   listGeneratedChapters,
   listNovels,
+  deleteNovel,
   saveCharacters,
   saveChapter,
   saveChapterPlan,
@@ -64,6 +65,24 @@ function handleError(res: Response, err: unknown, context: string): void {
 }
 
 type GenerateStepStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+/**
+ * 写章节用户提示中的「本章规划」块：endingHook 为收束唯一依据，避免与最后一节拍里另写的台词冲突（双结尾）。
+ */
+function buildChapterWritePlanBlock(plan: ChapterPlan): string {
+  const last = plan.beats.length;
+  return `本章标题：${plan.title}
+
+【本章情节节拍（严格按顺序推进，不得添加节拍外的场景）】
+${plan.beats.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+
+【章节边界要求】
+- 依次写满全部 ${last} 个节拍，不得跳过。
+- **收束以「结尾钩子」为唯一标准**：正文最后一幕、最后一句台词必须与下列「结尾钩子」一致（仅允许轻微文学性调整，禁止换成另一句主题相近的收束语）。
+- 若某一节拍里预设的收束台词/画面与「结尾钩子」不一致，以「结尾钩子」为准：该节拍只写到逼近终局前，终局台词与镜头全部留给「结尾钩子」。
+- 写完「结尾钩子」对应的画面或台词后**立即停笔**，禁止再追加出门、回首、第二段独白等任何内容。
+- **结尾钩子**：${plan.endingHook}`;
+}
 
 function buildGenerateStepStatuses(id: string, progress: PipelineProgress | null) {
   const completed = new Set(progress?.completedSteps ?? []);
@@ -180,6 +199,20 @@ router.get('/:id', (req: Request, res: Response) => {
     });
   } catch (err) {
     handleError(res, err, 'GET /novels/:id');
+  }
+});
+
+// DELETE /api/novels/:id — 删除项目及本地数据
+router.delete('/:id', (req: Request, res: Response) => {
+  try {
+    const ok = deleteNovel(req.params.id);
+    if (!ok) {
+      res.status(404).json({ success: false, error: '小说不存在' });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err) {
+    handleError(res, err, 'DELETE /novels/:id');
   }
 });
 
@@ -416,15 +449,7 @@ router.post('/:id/chapters/:n/write', async (req: Request, res: Response) => {
     const plan = getChapterPlan(meta.id, n);
 
     const userMsg = `请写《${meta.title}》第${n}章。
-${plan ? `本章标题：${plan.title}
-
-【本章情节节拍（严格按此顺序推进，不得添加节拍外的场景）】
-${plan.beats.map((b, i) => `${i + 1}. ${b}`).join('\n')}
-
-【章节边界要求】
-- 写完第 ${plan.beats.length} 个节拍后立即停笔
-- 最后一幕：${plan.endingHook}
-- 禁止在节拍完成后添加任何额外场景（含其他视角、监视者、旁观者等）` : '请根据上下文自然续写。'}
+${plan ? buildChapterWritePlanBlock(plan) : '请根据上下文自然续写。'}
 ${(req.body as { prompt?: string }).prompt ? '额外要求：' + (req.body as { prompt?: string }).prompt : ''}
 目标字数约 ${meta.wordsPerChapter} 字。`;
 
@@ -849,9 +874,7 @@ function buildChapterSteps(id: string, meta: ReturnType<typeof getMeta> & {}): P
         run: async () => {
           const chapterContext = buildChapterContext(id, n);
           const plan = getChapterPlan(id, n);
-          const planInstruction = plan
-            ? `本章标题：${plan.title}\n\n【本章情节节拍（严格按此顺序推进，不得添加节拍外的场景）】\n${plan.beats.map((b, i) => `${i + 1}. ${b}`).join('\n')}\n\n【章节边界要求】\n- 写完第 ${plan.beats.length} 个节拍后立即停笔\n- 最后一幕：${plan.endingHook}\n- 禁止在节拍完成后添加任何额外场景（含其他视角、监视者、旁观者等）`
-            : '请根据上下文自然续写。';
+          const planInstruction = plan ? buildChapterWritePlanBlock(plan) : '请根据上下文自然续写。';
           const text = await callClaude(
             buildSystemPrompt('chapter-writer', chapterContext, meta.template),
             `请写《${meta.title}》第${n}章，约${meta.wordsPerChapter}字。\n${planInstruction}`,

@@ -1,0 +1,404 @@
+{
+  "premise": "陈观意外被天道授箓为上海都城隍，卷入都市暗面的神道纷争，发现授箓隐藏着家族秘密和城市危机，必须在凡人生活与神职之间找到平衡，保护上海免受诡异事件侵蚀。",
+  "thematicQuestion": "当神权降临凡人，是守护还是控制？力量与人性如何共存？",
+  "goldenFinger": {
+    "description": "天道授箓‘上海都城隍’，获得神箓驱动神职权能，可吸收香火愿力施展驱邪、镇魂术，拥有微型庙宇空间作为神域雏形。",
+    "limitation": "神力初萌，只能在庙宇附近显化神异，依赖香火愿力且受地域范围限制，对非正统灵体有压制但需境界支撑。",
+    "cost": "神职责任绑定，需承担因果，使用神力可能加速失去凡人情感，微型空间成长需消耗功德和香火。"
+  },
+  "overallConflict": "陈观作为正统城隍，与陆九渊等激进势力碰撞，理念冲突：正统庇护 vs 强行控制，同时揭开上海暗面真相，应对上古邪物复苏和天道棋局。",
+  "endingVision": "陈观牺牲凡人身份，与上海城市之灵合一成为守护神，胜利伴随苦涩，留白暗示神道复苏的更大格局，城市继续在隐秘中平衡。",
+  "arcs": [
+    {
+      "name": "觉醒之暗",
+      "chapterRange": [
+        1,
+        50
+      ],
+      "summary": "陈观意外授箓，探索神道世界，处理首次灵异事件，结识赵铁柱和叶无痕，秦老爷子透露家族线索，埋下核心谜题。",
+      "coreConflict": "适应神职与凡人生活的冲突，处理小规模诡异事件，对抗初步威胁。",
+      "protagonistArc": "从迷茫到初步接受神职，展现责任感，学习基础神术。",
+      "majorEvents": [
+        "授箓仪式（第1章），打破日常",
+        "首次驱邪李寡妇事件（第15章），展现能力",
+        "结识赵铁柱和叶无痕，建立初期盟友"
+      ],
+      "keyTurningPoint": "秦老爷子在品茶时暗示家族禁术历史，陈观意识到授箓不简单（第30章）。",
+      "foreshadowing": {
+        "planted": [
+          "家族禁术的模糊提及（预计回收于第二弧）",
+          "陆九渊的名字被秦老爷子无意提到（预计回收于第三弧）"
+        ],
+        "harvested": []
+      },
+      "emotionalBeat": "陈观成功驱邪保护无辜者后，在微型空间内感受神职重量，既自豪又孤独（第40章）。",
+      "newCharacterHints": []
+    },
+    {
+      "name": "潮涌之渊",
+      "chapterRange": [
+        51,
+        150
+      ],
+      "summary": "格局扩大，陈观接触‘特民办’和‘沪渎龙宫’，处理水道污染事件结识苏浅夏，认知被陆九渊过去颠覆，经历首次失败。",
+      "coreConflict": "与更大势力博弈，理解上海暗面复杂性，理念碰撞加剧。",
+      "protagonistArc": "从自信到挫折，学习信任他人，处理失败后的自责。",
+      "majorEvents": [
+        "加入特民办顾问团，与林晚晴合作（第55章）",
+        "水道污染事件，结识苏浅夏并了解沪渎龙宫（第70章）",
+        "首次对抗钱老板势力，揭示陆九渊关联（第80章）"
+      ],
+      "keyTurningPoint": "发现陆九渊偷学秦家禁术的真相，认知颠覆（第120章）。",
+      "foreshadowing": {
+        "planted": [
+          "黄浦江底‘海眼’邪物的传说提及（预计回收于第三弧）",
+          "天道复苏的微弱迹象（预计回收于第五弧）"
+        ],
+        "harvested": [
+          "家族禁术线索回收（来自第一弧）"
+        ]
+      },
+      "emotionalBeat": "陈观在一次事件中因判断失误导致无辜者小梅受伤，在庙宇空间内崩溃自责（第130章）。",
+      "newCharacterHints": [
+        {
+          "name": "周明",
+          "role": "supporting",
+          "age": 30,
+          "appearance": "精干，短发，戴黑框眼镜，常穿西装",
+          "personality": "冷静高效，但内心有同情心",
+          "innerConflict": "特民办特工，在严格职责与保护无辜间挣扎",
+          "quirk": "总是用笔记本记录细节，说话前推眼镜",
+          "background": "特民办中级特工，出身军人家庭",
+          "abilities": "基础格斗、侦查和情报分析",
+          "currentRealm": "凡人",
+          "relationshipToProtagonist": "同事，提供官方支持",
+          "narrativeFunction": "官方秩序代表，增强现实感",
+          "hiddenSecret": "他暗中调查陆九渊，怀疑特民办内部有叛徒，但不敢声张",
+          "firstAppearance": 55
+        },
+        {
+          "name": "阿水",
+          "role": "supporting",
+          "age": 25,
+          "appearance": "皮肤黝黑，眼神灵动，穿休闲装，耳后有鳞片痕迹",
+          "personality": "开朗但神秘，重情义",
+          "innerConflict": "水族精灵，想融入人类生活但受龙宫束缚",
+          "quirk": "说话带轻微水声，兴奋时手会无意识划水",
+          "background": "沪渎龙宫低级成员，苏浅夏的朋友",
+          "abilities": "基础水系法术，水下呼吸和速度",
+          "currentRealm": "二阶灵感境",
+          "relationshipToProtagonist": "通过苏浅夏结识，提供水下情报",
+          "narrativeFunction": "水系视角代表，调节节奏",
+          "hiddenSecret": "他知道苏浅夏母亲灵魂被封在玉坠中，但被龙宫高层命令保密",
+          "firstAppearance": 70
+        },
+        {
+          "name": "钱老板",
+          "role": "antagonist",
+          "age": 50,
+          "appearance": "富态，穿定制西装，手中常玩一对核桃",
+          "personality": "狡猾重利，表面客气实则算计",
+          "innerConflict": "想掌控上海灵气资源获利，但怕引发不可控灾难",
+          "quirk": "总是谈生意和风水，爱说“和气生财”",
+          "background": "闸北钱家代表，经营物流和地产",
+          "abilities": "高深风水秘法，能调动地气",
+          "currentRealm": "三阶灵台境",
+          "relationshipToProtagonist": "竞争对手，初期反派",
+          "narrativeFunction": "利益驱动反派，展示资本与神道碰撞",
+          "hiddenSecret": "他与陆九渊有秘密合作，计划控制苏州河节点",
+          "firstAppearance": 80
+        },
+        {
+          "name": "小梅",
+          "role": "cannon_fodder",
+          "age": 20,
+          "appearance": "清秀，穿学生装，戴眼镜",
+          "personality": "天真但被邪教蛊惑，善良",
+          "innerConflict": "无（被利用状态），生前渴望关注",
+          "quirk": "喜欢收集古钱币，总在摆弄",
+          "background": "普通大学生，家庭贫困，加入邪教寻求归属",
+          "abilities": "无超能力",
+          "currentRealm": "凡人",
+          "relationshipToProtagonist": "受害者，引发主角反思",
+          "narrativeFunction": "展示现代邪教危害，增强真实感",
+          "hiddenSecret": "她无意中捡到一个被诅咒的康熙通宝，是陆九渊布局的一部分",
+          "firstAppearance": 100
+        }
+      ]
+    },
+    {
+      "name": "神城之弈",
+      "chapterRange": [
+        151,
+        300
+      ],
+      "summary": "多方势力角逐，陆九渊发动计划控制灵气节点，内部裂痕出现，秦老爷子牺牲，核心反转揭示禁术真相，高潮对决。",
+      "coreConflict": "理念冲突总爆发，上海面临毁灭危机，主角团队内部价值观碰撞。",
+      "protagonistArc": "从挫折中崛起，做出牺牲选择，神性增强但人性受考验。",
+      "majorEvents": [
+        "陆九渊公开行动，引发多方博弈（第160章）",
+        "秦老爷子为保护陈观牺牲，揭示禁术往事（第200章）",
+        "高潮对决：陈观联合各方对抗陆九渊，法相初凝（第280章）"
+      ],
+      "keyTurningPoint": "发现陆九渊的预言：上海将因海眼邪物毁灭，他的激进手段是为‘拯救’（第250章）。",
+      "foreshadowing": {
+        "planted": [
+          "天道复苏的明确迹象（预计回收于第五弧）",
+          "上古邪物的苏醒前兆（预计回收于第四弧）"
+        ],
+        "harvested": [
+          "海眼邪物线索回收（来自第二弧）",
+          "陆九渊过去真相回收（来自前弧）"
+        ]
+      },
+      "emotionalBeat": "秦老爷子在茶凉前说出最后遗言，陈观爆发神威但失去亲人，团队悲愤交集（第200章）。",
+      "newCharacterHints": [
+        {
+          "name": "老K",
+          "role": "antagonist",
+          "age": 45,
+          "appearance": "神秘，戴银色面具，穿黑色风衣",
+          "personality": "冷酷无情，效率至上",
+          "innerConflict": "无（纯反派），但偶尔流露对力量的渴望",
+          "quirk": "总是用代号说话，如“任务完成”",
+          "background": "西方秘法学会高级成员，受雇来沪",
+          "abilities": "元素魔法（火与暗影），召唤术",
+          "currentRealm": "四阶神庭境",
+          "relationshipToProtagonist": "外部敌人，增加国际冲突",
+          "narrativeFunction": "引入西方秘法变量，挑战主角神道",
+          "hiddenSecret": "他真实目的是窃取上海灵脉核心，背后有更大组织",
+          "firstAppearance": 160
+        },
+        {
+          "name": "白素",
+          "role": "supporting",
+          "age": 28,
+          "appearance": "白衣胜雪，气质清冷，长发及腰",
+          "personality": "冷静智慧，寡言但关键时刻果断",
+          "innerConflict": "灵脉守护者，在被动守护与主动干预间犹豫",
+          "quirk": "总是携带一面古铜镜，偶尔对镜自语",
+          "background": "江南民俗传承研究会高层，出身书香门第",
+          "abilities": "灵脉感知和修复术，高级符箓",
+          "currentRealm": "四阶神庭境",
+          "relationshipToProtagonist": "盟友，提供智谋支持",
+          "narrativeFunction": "智者角色，深化神道理念",
+          "hiddenSecret": "她知道天道复苏是周期性事件，曾见证上古神战",
+          "firstAppearance": 180
+        },
+        {
+          "name": "黑三",
+          "role": "cannon_fodder",
+          "age": 35,
+          "appearance": "凶悍，左脸有刀疤，肌肉发达",
+          "personality": "残暴，忠诚于陆九渊",
+          "innerConflict": "无，但偶尔回忆过去",
+          "quirk": "爱嚼槟榔，吐渣时不屑",
+          "background": "前特民办特工，因违纪被开除后投靠陆九渊",
+          "abilities": "体术高手，携带符咒武器",
+          "currentRealm": "凡人",
+          "relationshipToProtagonist": "敌人，战斗炮灰",
+          "narrativeFunction": "展示陆九渊势力的残酷",
+          "hiddenSecret": "他曾是周明的搭档，背叛因家庭被陆九渊控制",
+          "firstAppearance": 200
+        },
+        {
+          "name": "灵儿",
+          "role": "supporting",
+          "age": 16,
+          "appearance": "可爱，穿粉色汉服，大眼睛",
+          "personality": "活泼好奇，天真善良",
+          "innerConflict": "新生灵体，想体验人类情感但怕消失",
+          "quirk": "总是问“为什么”，兴奋时飘浮",
+          "background": "城隍庙香火中诞生的精灵，被秦老爷子点化",
+          "abilities": "辅助神术（如净化、祝福），灵体移动",
+          "currentRealm": "一阶香火境",
+          "relationshipToProtagonist": "庙宇守护灵，视为哥哥",
+          "narrativeFunction": "萌点担当，提供情感温暖",
+          "hiddenSecret": "她是秦老爷子早年用禁术创造的，寿命有限",
+          "firstAppearance": 220
+        },
+        {
+          "name": "赵局长",
+          "role": "supporting",
+          "age": 55,
+          "appearance": "威严，秃顶，穿中山装",
+          "personality": "官僚但正直，务实",
+          "innerConflict": "官方代表，在维持社会稳定与揭露真相间权衡",
+          "quirk": "总是开会说“从大局考虑”",
+          "background": "特民办高层，出身政法系统",
+          "abilities": "无超能力，但决策力和资源调动强",
+          "currentRealm": "凡人",
+          "relationshipToProtagonist": "上级，施加压力",
+          "narrativeFunction": "官方压力源，体现体制复杂性",
+          "hiddenSecret": "他知道陆九渊的计划但默许以观察天道反应，准备在危机时接管",
+          "firstAppearance": 240
+        }
+      ]
+    },
+    {
+      "name": "心渊之影",
+      "chapterRange": [
+        301,
+        425
+      ],
+      "summary": "外部威胁暂缓，团队内部矛盾浮现，林晚晴发现家族秘密与主角分歧，处理残余势力和现代诡异，深化神性与人性冲突。",
+      "coreConflict": "内部价值观分歧，主角与盟友关系紧张，探索力量本质和牺牲意义。",
+      "protagonistArc": "从胜利反思到处理内部关系，神性增长但努力保留人性。",
+      "majorEvents": [
+        "修复城市灵脉节点，与影子对抗（第350章）",
+        "林晚晴揭开家族镇压邪物历史，与陈观激烈争论（第380章）",
+        "处理现代诡异事件如恶灵APP（第400章）"
+      ],
+      "keyTurningPoint": "陈观意识到自己的神职可能导致孤独，选择向林晚晴坦诚脆弱（第410章）。",
+      "foreshadowing": {
+        "planted": [
+          "天道更大棋局的暗示（如天机老人提及，预计回收于第五弧）"
+        ],
+        "harvested": [
+          "上古邪物苏醒前兆回收（来自第三弧）",
+          "预言真相部分回收"
+        ]
+      },
+      "emotionalBeat": "陈观与林晚晴在雨中争吵后和解，彼此承认爱意但接受未来不确定（第380章）。",
+      "newCharacterHints": [
+        {
+          "name": "阿雅",
+          "role": "supporting",
+          "age": 22,
+          "appearance": "混血，时尚短发，穿潮牌，戴多个耳环",
+          "personality": "叛逆但善良，直率",
+          "innerConflict": "东南亚降头师传人，在传统诅咒术与现代道德间挣扎",
+          "quirk": "总是玩手机发社交媒体，说话夹杂外语",
+          "background": "家族在泰国经营古董店，来上海留学",
+          "abilities": "基础降头术（如傀儡、诅咒）",
+          "currentRealm": "三阶灵台境",
+          "relationshipToProtagonist": "新盟友，提供异域视角",
+          "narrativeFunction": "文化冲突代表，引入多元神秘元素",
+          "hiddenSecret": "她家族曾与上海某个南洋商会诅咒有关，她来沪是为解咒",
+          "firstAppearance": 310
+        },
+        {
+          "name": "老陈",
+          "role": "supporting",
+          "age": 65,
+          "appearance": "朴实，皮肤黝黑，穿旧军大衣",
+          "personality": "憨厚但固执，爱护土地",
+          "innerConflict": "守护祖传农田对抗开发商，在传统与进步间纠结",
+          "quirk": "总是抽烟斗，叹气说“地是根啊”",
+          "background": "上海郊区农民，世代耕种",
+          "abilities": "无超能力，但对土地有直觉感知",
+          "currentRealm": "凡人",
+          "relationshipToProtagonist": "求助者，引发主角对守护范围的思考",
+          "narrativeFunction": "普通人视角，增强现实共鸣",
+          "hiddenSecret": "他的农田下是古吴越祭祀遗址，埋有镇物",
+          "firstAppearance": 330
+        },
+        {
+          "name": "影子",
+          "role": "antagonist",
+          "age": 100,
+          "appearance": "模糊黑影，人形，无声移动",
+          "personality": "神秘莫测，愤世嫉俗",
+          "innerConflict": "曾是正神，因天道不公堕落，想毁灭重建",
+          "quirk": "总是从阴影中现身，说话回声",
+          "background": "旧上海城隍体系残党，被天道遗弃",
+          "abilities": "阴影操控，腐蚀神性",
+          "currentRealm": "五阶显圣境",
+          "relationshipToProtagonist": "理念敌人，镜像对照",
+          "narrativeFunction": "内部反思触发者，探讨神道缺陷",
+          "hiddenSecret": "他因爱人被天道牺牲而背叛，计划利用海眼邪物报复",
+          "firstAppearance": 350
+        },
+        {
+          "name": "小红",
+          "role": "cannon_fodder",
+          "age": 18,
+          "appearance": "青春，穿校服，拿智能手机",
+          "personality": "天真被利用，爱虚荣",
+          "innerConflict": "无，沉迷网络",
+          "quirk": "喜欢自拍和直播，常说“点赞哦”",
+          "background": "高中生，家庭富裕，下载诡异APP寻求刺激",
+          "abilities": "无超能力",
+          "currentRealm": "凡人",
+          "relationshipToProtagonist": "受害者，展示现代诡异威胁",
+          "narrativeFunction": "代表科技与神秘结合的新危险",
+          "hiddenSecret": "她手机里的恶灵APP是陆九渊残余势力开发的，用于收集恐惧能量",
+          "firstAppearance": 380
+        }
+      ]
+    },
+    {
+      "name": "天道之合",
+      "chapterRange": [
+        426,
+        500
+      ],
+      "summary": "最终对抗海眼邪物，天机老人揭示天道棋局，陈观牺牲凡人身份与上海合一，结局留白暗示神道复苏延续。",
+      "coreConflict": "终极对决上古邪物，实现神城合一，回答核心主题。",
+      "protagonistArc": "从反思到超越，完成神职使命，接受代价成为守护神。",
+      "majorEvents": [
+        "海眼邪物苏醒，上海危机（第450章）",
+        "天机老人指引，揭示天道复苏真相（第470章）",
+        "陈观最终牺牲，与城市灵合一（第490章）"
+      ],
+      "keyTurningPoint": "陈观选择燃烧神箓与海眼邪物同归于尽，但被城市认可重生为永恒守护者（第495章）。",
+      "foreshadowing": {
+        "planted": [],
+        "harvested": [
+          "所有伏笔回收：家族秘密、陆九渊预言、天道复苏等"
+        ]
+      },
+      "emotionalBeat": "陈观在庙宇空间内告别林晚晴、苏浅夏等亲友，淡然一笑后消散，城市恢复宁静但留下余韵（第500章）。",
+      "newCharacterHints": [
+        {
+          "name": "天机老人",
+          "role": "supporting",
+          "age": 80,
+          "appearance": "仙风道骨，白发长须，穿古袍",
+          "personality": "超然智慧，慈悲但疏离",
+          "innerConflict": "天道观察者，想干预但受规则限制",
+          "quirk": "总是说谜语般的话，如“缘起缘灭”",
+          "background": "上古修行者，存活至今，见证多次天道周期",
+          "abilities": "预知和天道沟通，强大但不直接战斗",
+          "currentRealm": "七阶合道境",
+          "relationshipToProtagonist": "最终指引者，揭示真相",
+          "narrativeFunction": "揭秘者，深化世界观",
+          "hiddenSecret": "他是天道的人间代理，授箓陈观是计划一部分",
+          "firstAppearance": 430
+        },
+        {
+          "name": "海眼邪物",
+          "role": "antagonist",
+          "age": 1000,
+          "appearance": "巨大混沌怪物，似龙似章鱼，散发黑气",
+          "personality": "混沌邪恶，无理智毁灭",
+          "innerConflict": "无，纯负面力量聚合",
+          "quirk": "无，行动缓慢但破坏力强",
+          "background": "上古被上海先民封印在黄浦江底的邪神",
+          "abilities": "污染灵脉、操控水元素、引发地震",
+          "currentRealm": "七阶合道境",
+          "relationshipToProtagonist": "终极敌人，代表毁灭",
+          "narrativeFunction": "最终BOSS，推动高潮对决",
+          "hiddenSecret": "它的核心是上古神战碎片，吞噬可获神力但代价是疯狂",
+          "firstAppearance": 450
+        },
+        {
+          "name": "小记者",
+          "role": "supporting",
+          "age": 25,
+          "appearance": "干练，短发，拿专业相机",
+          "personality": "好奇勇敢，有正义感",
+          "innerConflict": "想报道超自然真相引发关注，但怕造成社会恐慌",
+          "quirk": "总是录音采访，说话快",
+          "background": "都市报调查记者，出身普通家庭",
+          "abilities": "无超能力，但观察力和写作强",
+          "currentRealm": "凡人",
+          "relationshipToProtagonist": "记录者，旁观视角",
+          "narrativeFunction": "留白视角，暗示故事在凡人中继续",
+          "hiddenSecret": "他拍到了神战照片，但选择删除，只在日记中记录，准备写小说",
+          "firstAppearance": 470
+        }
+      ]
+    }
+  ]
+}

@@ -61,6 +61,7 @@ export const novelsApi = {
     apiFetch<{ data: GenerateStatus }>(`/novels/${id}/generate/interrupt`, { method: 'POST' }),
   create: (body: { title: string; template: string; premise?: string }) =>
     apiFetch<Novel>('/novels', { method: 'POST', body: JSON.stringify(body) }),
+  remove: (id: string) => apiFetch<{ success: boolean }>(`/novels/${id}`, { method: 'DELETE' }),
   exportUrl: (id: string) => `${BASE_URL}/novels/${id}/export`,
 }
 
